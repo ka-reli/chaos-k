@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaos-FX — тестовый стенд</title>
+  <link rel="stylesheet" href="../css/chaos-fx.css" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 24px;
+      font: 16px/1.6 -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #1b1d22; color: #d8dce2;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #8b909a; font-size: 13px; margin: 0 0 18px; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    textarea {
+      width: 100%; min-height: 150px; box-sizing: border-box;
+      background: #14161a; color: #e6e9ee; border: 1px solid #2c2f36;
+      border-radius: 8px; padding: 12px; font-family: ui-monospace, monospace;
+      font-size: 14px; resize: vertical;
+    }
+    .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 12px 0; }
+    .controls label { font-size: 13px; color: #aeb3bb; display: inline-flex; gap: 6px; align-items: center; }
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 16px; }
+    .samples button, .controls button {
+      background: #262a31; color: #cfd4db; border: 1px solid #353a43;
+      border-radius: 6px; padding: 6px 11px; font-size: 13px; cursor: pointer;
+    }
+    .samples button:hover, .controls button:hover { background: #2f343d; }
+    .stage-head { color: #8b909a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; }
+    #stage {
+      background var(--stage-bg, #202329);
+      background: var(--stage-bg, #202329);
+      border: 1px solid #2c2f36; border-radius: 8px; padding: 18px;
+      min-height: 90px; font-size: 19px; line-height: 1.9; white-space: pre-wrap;
+    }
+    #stage.bg-light { --stage-bg: #ece8e0; color: #20242b; }
+    details { margin-top: 18px; }
+    summary { cursor: pointer; color: #8b909a; font-size: 13px; }
+    pre.html { background: #14161a; border: 1px solid #2c2f36; border-radius: 8px;
+      padding: 12px; overflow: auto; font-size: 12px; color: #9aa0a8; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Chaos-FX — тестовый стенд</h1>
+    <p class="sub">Путь «метка → экран». Пиши метки в поле, результат — на сцене. Источник правды: <code>data/registry.js</code>.</p>
+
+    <textarea id="input">Огонь в очаге [fx:ember][blood]потрескивал[/blood][/fx], пока за окном [fx:ghost]кто-то[/fx] шептал твоё имя.
+
+Настроение целиком: [ominous]что-то приближается[/ominous].
+
+Цвет без эффекта: [void]бездна смотрит в ответ[/void], а вот [fx:glow][ice]ледяной свет[/ice][/fx].
+
+Пространственный: [fx:wave]вся эта строка тихо колышется как на воде[/fx].
+
+Глитч и дрожь: [fx:glitch]сигнал[/fx] и [fx:shake]рука дрожит[/fx].
+
+Это [не метка](https://example.com) — markdown-ссылка не должна сломаться. И [неизвестное] слово тоже.</textarea>
+
+    <div class="samples" id="samples"></div>
+
+    <div class="controls">
+      <label><input type="checkbox" id="reduced" /> reduced-motion (статика)</label>
+      <label><input type="checkbox" id="lightbg" /> светлый фон сцены</label>
+      <label>бюджет <input type="number" id="budget" value="14" min="0" max="60" style="width:56px"></label>
+      <button id="reroll" title="перевыбрать эффекты у меток-настроений">↻ пересобрать</button>
+    </div>
+
+    <div class="stage-head">Сцена</div>
+    <div id="stage" class="cfx-root"></div>
+
+    <details>
+      <summary>Показать сгенерированный HTML</summary>
+      <pre class="html" id="htmlout"></pre>
+    </details>
+  </div>
+
+  <script src="../data/registry.js"></script>
+  <script src="../src/parser.js"></script>
+  <script>
+    var input = document.getElementById('input');
+    var stage = document.getElementById('stage');
+    var htmlout = document.getElementById('htmlout');
+    var reduced = document.getElementById('reduced');
+    var lightbg = document.getElementById('lightbg');
+    var budget = document.getElementById('budget');
+
+    var SAMPLES = [
+      ['Вложенность', '[fx:ember][blood]пылающая кровь[/blood][/fx]'],
+      ['Настроение', '[psychedelic]реальность плывёт[/psychedelic]'],
+      ['Спираль (длинно→провал)', '[fx:wave]' + 'очень длинная строка '.repeat(15) + '[/fx]'],
+      ['Забытое закрытие', 'модель забыла закрыть [fx:glow][gold]метку и всё'],
+      ['Только цвета', '[blood]кровь[/blood] [ice]лёд[/ice] [void]бездна[/void] [violet]фиолет[/violet] [gold]золото[/gold]'],
+      ['Бюджет (перебор)', '[fx:glitch]а[/fx][fx:ember]б[/fx][fx:glow]в[/fx][fx:glitch]г[/fx][fx:ember]д[/fx]'],
+      ['Сырьё не течёт', 'неизвестный эффект [fx:неведомое]тут[/fx] выкушен без следа']
+    ];
+
+    var box = document.getElementById('samples');
+    SAMPLES.forEach(function (s) {
+      var b = document.createElement('button');
+      b.textContent = s[0];
+      b.onclick = function () { input.value = s[1]; render(); };
+      box.appendChild(b);
+    });
+
+    function render() {
+      var html = ChaosFX.parse(input.value, {
+        reducedMotion: reduced.checked,
+        budget: parseInt(budget.value, 10) || 0,
+        theme: lightbg.checked ? 'light' : 'dark'
+      });
+      stage.innerHTML = html;
+      htmlout.textContent = html;
+    }
+
+    function applyTheme() {
+      stage.classList.toggle('cfx-theme-light', lightbg.checked);
+      stage.classList.toggle('bg-light', lightbg.checked);
+    }
+
+    input.addEventListener('input', render);
+    reduced.addEventListener('change', render);
+    budget.addEventListener('input', render);
+    lightbg.addEventListener('change', function () { applyTheme(); render(); });
+    document.getElementById('reroll').addEventListener('click', render);
+
+    applyTheme();
+    render();
+  </script>
+</body>
+</html>

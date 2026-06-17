@@ -1,0 +1,171 @@
+/*
+ * Chaos-FX — стили (пункты 6 и 9 спецификации).
+ *
+ * Первый срез: 6 эффектов разных категорий + двойная палитра цветов.
+ * CSS живёт ОДИН раз — инжектится расширением, в контекст модели не попадает.
+ *
+ * Категории среза:
+ *   inline + colorBased + анимация   → glow, ember
+ *   inline + чистое движение         → shake (reducedMotion: disable)
+ *   inline + хитрый/особый           → glitch, ghost
+ *   spatial (с maxChars)             → wave
+ */
+
+/* ── Темы: двойная палитра через CSS-переменные ──────────────────────────── */
+/* Тёмный фон — по умолчанию. .cfx-theme-light переключает на светлую палитру. */
+.cfx-root {
+  /* Контрастная обводка (как субтитры) — страховка от любого фона. */
+  --cfx-outline: rgba(0, 0, 0, 0.85);
+
+  --clr-blood: #e03b3b;  --clr-flame: #ff8c2b;  --clr-rust: #c46a3a;
+  --clr-amber: #ffc24d;  --clr-honey: #ffd97a;  --clr-sulfur: #e6e23a;
+  --clr-acid: #9dff3c;   --clr-ichor: #b9d44a;  --clr-moss: #7bbf6a;
+  --clr-ice: #9fe3ff;    --clr-azure: #5bb8ff;  --clr-abyss: #5a7fd0;
+  --clr-void: #6b7299;   --clr-mist: #c4d2e0;   --clr-violet: #b98cff;
+  --clr-ultraviolet: #d28bff; --clr-bruise: #bf6fa3; --clr-neon: #ff5cc8;
+  --clr-rose: #ff9bb5;   --clr-silver: #d8dee6; --clr-bone: #ede4d3;
+  --clr-ash: #b0b4ba;    --clr-ink: #c0c4cc;    --clr-oil: #7af0c0;
+}
+
+.cfx-root.cfx-theme-light {
+  --cfx-outline: rgba(255, 255, 255, 0.9);
+
+  --clr-blood: #8b0000;  --clr-flame: #c2410c;  --clr-rust: #8a4421;
+  --clr-amber: #b8860b;  --clr-honey: #c79a32;  --clr-sulfur: #9a9810;
+  --clr-acid: #4d8a00;   --clr-ichor: #6b7a1f;  --clr-moss: #3f6f33;
+  --clr-ice: #2b7a9e;    --clr-azure: #1565c0;  --clr-abyss: #283d6b;
+  --clr-void: #1a1d33;   --clr-mist: #6b7d8f;   --clr-violet: #6a3dbf;
+  --clr-ultraviolet: #8a2be2; --clr-bruise: #5e2750; --clr-neon: #d6178f;
+  --clr-rose: #c44569;   --clr-silver: #7a828c; --clr-bone: #8a7f68;
+  --clr-ash: #6b6f76;    --clr-ink: #1a1a22;    --clr-oil: #2a9d8f;
+}
+
+/* ── Ось цвета: clr-* читает переменную активной палитры ─────────────────── */
+.cfx-root [class*="clr-"] { color: var(--cfx-clr, inherit); }
+.cfx-root .clr-blood { --cfx-clr: var(--clr-blood); }
+.cfx-root .clr-flame { --cfx-clr: var(--clr-flame); }
+.cfx-root .clr-rust { --cfx-clr: var(--clr-rust); }
+.cfx-root .clr-amber { --cfx-clr: var(--clr-amber); }
+.cfx-root .clr-honey { --cfx-clr: var(--clr-honey); }
+.cfx-root .clr-sulfur { --cfx-clr: var(--clr-sulfur); }
+.cfx-root .clr-acid { --cfx-clr: var(--clr-acid); }
+.cfx-root .clr-ichor { --cfx-clr: var(--clr-ichor); }
+.cfx-root .clr-moss { --cfx-clr: var(--clr-moss); }
+.cfx-root .clr-ice { --cfx-clr: var(--clr-ice); }
+.cfx-root .clr-azure { --cfx-clr: var(--clr-azure); }
+.cfx-root .clr-abyss { --cfx-clr: var(--clr-abyss); }
+.cfx-root .clr-void { --cfx-clr: var(--clr-void); }
+.cfx-root .clr-mist { --cfx-clr: var(--clr-mist); }
+.cfx-root .clr-violet { --cfx-clr: var(--clr-violet); }
+.cfx-root .clr-ultraviolet { --cfx-clr: var(--clr-ultraviolet); }
+.cfx-root .clr-bruise { --cfx-clr: var(--clr-bruise); }
+.cfx-root .clr-neon { --cfx-clr: var(--clr-neon); }
+.cfx-root .clr-rose { --cfx-clr: var(--clr-rose); }
+.cfx-root .clr-silver { --cfx-clr: var(--clr-silver); }
+.cfx-root .clr-bone { --cfx-clr: var(--clr-bone); }
+.cfx-root .clr-ash { --cfx-clr: var(--clr-ash); }
+.cfx-root .clr-ink { --cfx-clr: var(--clr-ink); }
+.cfx-root .clr-oil { --cfx-clr: var(--clr-oil); }
+
+/* Контрастная обводка — всем цветным (clr-* и colorBased-эффектам). */
+.cfx-root [class*="clr-"],
+.cfx-root .fx-colored {
+  text-shadow:
+    -1px -1px 0 var(--cfx-outline),
+     1px -1px 0 var(--cfx-outline),
+    -1px  1px 0 var(--cfx-outline),
+     1px  1px 0 var(--cfx-outline);
+}
+
+/* Все fx-спаны — строчные, не ломают поток текста. */
+.cfx-root [data-fx] { display: inline-block; }
+
+/* ── Эффекты ─────────────────────────────────────────────────────────────── */
+
+/* glow — мягкий светящийся ореол (inline, colorBased). */
+.cfx-root .fx-glow {
+  color: var(--cfx-clr, currentColor);
+  animation: cfx-glow 2.4s ease-in-out infinite;
+}
+@keyframes cfx-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
+  50%      { filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 14px currentColor); }
+}
+.cfx-root .fx-glow-static {
+  color: var(--cfx-clr, currentColor);
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* ember — тлеющий оранжево-красный жар (inline, colorBased). */
+.cfx-root .fx-ember {
+  color: var(--cfx-clr, #ff8c2b);
+  animation: cfx-ember 1.6s ease-in-out infinite;
+}
+@keyframes cfx-ember {
+  0%, 100% { text-shadow: 0 0 4px #ff6a00, 0 0 8px #ff2d00; opacity: 0.92; }
+  50%      { text-shadow: 0 0 8px #ff8c2b, 0 0 18px #ff3b00; opacity: 1; }
+}
+.cfx-root .fx-ember-static {
+  color: var(--cfx-clr, #ff8c2b);
+  text-shadow: 0 0 6px #ff6a00, 0 0 12px #ff2d00;
+}
+
+/* shake — мелкая дрожь (чистое движение; reducedMotion: disable). */
+.cfx-root .fx-shake { animation: cfx-shake 0.28s linear infinite; }
+@keyframes cfx-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-1px, 1px); }
+  50%      { transform: translate(1px, -1px); }
+  75%      { transform: translate(-1px, -1px); }
+}
+
+/* glitch — RGB-разрыв и нарезка (хитрый, CSS-only через text-shadow). */
+.cfx-root .fx-glitch {
+  position: relative;
+  animation: cfx-glitch 0.9s steps(2, end) infinite;
+}
+@keyframes cfx-glitch {
+  0%   { text-shadow: 1px 0 #f0f, -1px 0 #0ff; transform: translate(0); }
+  20%  { text-shadow: -2px 0 #f0f, 2px 0 #0ff; transform: translate(1px, -1px); }
+  40%  { text-shadow: 2px 0 #f0f, -2px 0 #0ff; transform: translate(-1px, 1px); }
+  60%  { text-shadow: -1px 0 #f0f, 1px 0 #0ff; transform: translate(1px, 0); }
+  80%  { text-shadow: 1px 0 #f0f, -1px 0 #0ff; transform: translate(-1px, 0); }
+  100% { text-shadow: 1px 0 #f0f, -1px 0 #0ff; transform: translate(0); }
+}
+
+/* ghost — призрачная полупрозрачность (особый, special). */
+.cfx-root .fx-ghost {
+  opacity: 0.45;
+  animation: cfx-ghost 3.5s ease-in-out infinite;
+}
+@keyframes cfx-ghost {
+  0%, 100% { opacity: 0.25; filter: blur(0.4px); }
+  50%      { opacity: 0.6;  filter: blur(0); }
+}
+.cfx-root .fx-ghost-static { opacity: 0.4; filter: blur(0.3px); }
+
+/* wave — строка колышется целиком (spatial, maxChars 200). */
+.cfx-root .fx-wave {
+  animation: cfx-wave 2.2s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes cfx-wave {
+  0%, 100% { transform: translateY(0) skewX(0deg); }
+  25%      { transform: translateY(-3px) skewX(2deg); }
+  50%      { transform: translateY(0) skewX(0deg); }
+  75%      { transform: translateY(3px) skewX(-2deg); }
+}
+
+/* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
+/* Парсер сам подставляет reducedMotion-классы при ручном тумблере; это —
+   страховка на уровне CSS для системной настройки (глушим анимации). */
+@media (prefers-reduced-motion: reduce) {
+  .cfx-root .fx-glow,
+  .cfx-root .fx-ember,
+  .cfx-root .fx-shake,
+  .cfx-root .fx-glitch,
+  .cfx-root .fx-ghost,
+  .cfx-root .fx-wave {
+    animation: none !important;
+  }
+}
