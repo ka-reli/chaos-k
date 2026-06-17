@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chaos-FX — тестовый стенд</title>
+  <title>Chaos-FX — test bench</title>
   <link rel="stylesheet" href="../css/chaos-fx.css" />
   <style>
     :root { color-scheme: dark; }
@@ -45,8 +45,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Chaos-FX — тестовый стенд</h1>
-    <p class="sub">Путь «метка → экран». Пиши метки в поле, результат — на сцене. Источник правды: <code>data/registry.js</code>.</p>
+    <h1>Chaos-FX — test bench</h1>
+    <p class="sub">The “tag → screen” path. Type tags in the field, see the result on the stage. Source of truth: <code>data/registry.js</code>.</p>
 
     <textarea id="input">Огонь в очаге [fx:ember][blood]потрескивал[/blood][/fx], пока за окном [fx:ghost]кто-то[/fx] шептал твоё имя.
 
@@ -63,17 +63,17 @@
     <div class="samples" id="samples"></div>
 
     <div class="controls">
-      <label><input type="checkbox" id="reduced" /> reduced-motion (статика)</label>
-      <label><input type="checkbox" id="lightbg" /> светлый фон сцены</label>
-      <label>бюджет <input type="number" id="budget" value="14" min="0" max="60" style="width:56px"></label>
-      <button id="reroll" title="перевыбрать эффекты у меток-настроений">↻ пересобрать</button>
+      <label><input type="checkbox" id="reduced" /> reduced-motion (static)</label>
+      <label><input type="checkbox" id="lightbg" /> light stage background</label>
+      <label>budget <input type="number" id="budget" value="14" min="0" max="60" style="width:56px"></label>
+      <button id="reroll" title="re-roll effects for mood tags">↻ re-render</button>
     </div>
 
-    <div class="stage-head">Сцена</div>
+    <div class="stage-head">Stage</div>
     <div id="stage" class="cfx-root"></div>
 
     <details>
-      <summary>Показать сгенерированный HTML</summary>
+      <summary>Show generated HTML</summary>
       <pre class="html" id="htmlout"></pre>
     </details>
   </div>
@@ -89,13 +89,13 @@
     var budget = document.getElementById('budget');
 
     var SAMPLES = [
-      ['Вложенность', '[fx:ember][blood]пылающая кровь[/blood][/fx]'],
-      ['Настроение', '[psychedelic]реальность плывёт[/psychedelic]'],
-      ['Спираль (длинно→провал)', '[fx:wave]' + 'очень длинная строка '.repeat(15) + '[/fx]'],
-      ['Забытое закрытие', 'модель забыла закрыть [fx:glow][gold]метку и всё'],
-      ['Только цвета', '[blood]кровь[/blood] [ice]лёд[/ice] [void]бездна[/void] [violet]фиолет[/violet] [gold]золото[/gold]'],
-      ['Бюджет (перебор)', '[fx:glitch]а[/fx][fx:ember]б[/fx][fx:glow]в[/fx][fx:glitch]г[/fx][fx:ember]д[/fx]'],
-      ['Сырьё не течёт', 'неизвестный эффект [fx:неведомое]тут[/fx] выкушен без следа']
+      ['Nesting', '[fx:ember][blood]пылающая кровь[/blood][/fx]'],
+      ['Mood', '[psychedelic]реальность плывёт[/psychedelic]'],
+      ['Spatial (too long → fail)', '[fx:wave]' + 'очень длинная строка '.repeat(15) + '[/fx]'],
+      ['Forgotten close', 'модель забыла закрыть [fx:glow][gold]метку и всё'],
+      ['Colors only', '[blood]кровь[/blood] [ice]лёд[/ice] [void]бездна[/void] [violet]фиолет[/violet] [gold]золото[/gold]'],
+      ['Budget (overflow)', '[fx:glitch]а[/fx][fx:ember]б[/fx][fx:glow]в[/fx][fx:glitch]г[/fx][fx:ember]д[/fx]'],
+      ['No raw leak', 'неизвестный эффект [fx:неведомое]тут[/fx] выкушен без следа']
     ];
 
     var box = document.getElementById('samples');
