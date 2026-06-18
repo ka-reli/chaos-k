@@ -87,6 +87,25 @@
     { id: 'oil', aliases: ['нефть', 'iridescent'], dark: '#7af0c0', light: '#2a9d8f', moods: ['psychedelic', 'dream', 'corrupt'], note: 'переливчатый — анимированный градиент' }
   ];
 
+  // ── Макро-формы (14) — весь ответ как рецепт/пьеса/поток и т.д. ────────────
+  // Главное поле — instruction (уходит модели). Часть несёт CSS-вёрстку.
+  var FORMS = [
+    { id: 'stream', moods: ['dream', 'fear', 'psychedelic', 'chaos'], intensity: 7, weight: 0.4, desc: 'поток сознания', instruction: 'Пиши потоком сознания: размывай границы предложений, перескакивай между мыслями, образами и воспоминаниями, обрывай фразы на полуслове.' },
+    { id: 'recipe', moods: ['calm', 'nostalgia', 'sacred'], intensity: 6, weight: 0.3, desc: 'рецепт', instruction: 'Оформи как кулинарный рецепт — раздел «ингредиенты» и пронумерованные шаги, но описывай ими то, что происходит в сцене.' },
+    { id: 'play', moods: ['rage', 'tender', 'ominous'], intensity: 6, weight: 0.4, desc: 'пьеса', instruction: 'Оформи как пьесу: имя персонажа перед каждой репликой, действия и обстановка — курсивом в скобках, как сценические ремарки.' },
+    { id: 'documentary', moods: ['cold', 'sacred', 'nostalgia'], intensity: 5, weight: 0.3, desc: 'документалка', instruction: 'Веди отстранённым тоном документального наблюдателя, добавляй сноски-пояснения к происходящему.' },
+    { id: 'code', moods: ['cold', 'corrupt', 'chaos'], intensity: 7, weight: 0.3, desc: 'код/алгоритм', instruction: 'Опиши сцену как псевдокод или алгоритм: условия, циклы, функции и логика — но смыслом остаётся происходящее.' },
+    { id: 'math', moods: ['cold', 'psychedelic', 'dream'], intensity: 7, weight: 0.2, desc: 'последовательность/фрактал', instruction: 'Структурируй текст как формулу, последовательность или фрактал: повторы с вариацией, вложенность, числовая логика.' },
+    { id: 'palindrome', moods: ['eerie', 'dream', 'corrupt'], intensity: 8, weight: 0.2, desc: 'зеркальный текст', instruction: 'Построй фрагмент зеркально — вторая половина отражает первую по структуре или смыслу.' },
+    { id: 'scrapbook', moods: ['nostalgia', 'sorrow', 'dream'], intensity: 7, weight: 0.3, css: 'fx-scrapbook', desc: 'скрэпбук', instruction: 'Собери ответ как страницу скрэпбука: обрывки фраз, подписи, разрозненные вклейки воспоминаний.' },
+    { id: 'letters', moods: ['tender', 'sorrow', 'nostalgia'], intensity: 5, weight: 0.3, desc: 'письма', instruction: 'Оформи как письмо или переписку: обращение, тело, подпись.' },
+    { id: 'dictionary', moods: ['cold', 'eerie'], intensity: 6, weight: 0.2, desc: 'словарная статья', instruction: 'Оформи как словарную или энциклопедическую статью: термин, определения по пунктам, примеры употребления.' },
+    { id: 'dossier', moods: ['ominous', 'cold', 'fear'], intensity: 6, weight: 0.3, css: 'fx-dossier', desc: 'досье с цензурой', instruction: 'Оформи как засекреченный документ: грифы и заголовки, пункты, часть текста скрой как [ЗАЦЕНЗУРЕНО].' },
+    { id: 'interview', moods: ['cold', 'ominous'], intensity: 5, weight: 0.2, desc: 'расшифровка', instruction: 'Оформи как расшифровку интервью или допроса: реплики с метками [В:] и [О:] или тайм-кодами.' },
+    { id: 'dialogue', moods: ['tender', 'ominous', 'rage'], intensity: 4, weight: 0.3, desc: 'чистый диалог', instruction: 'Используй только прямую речь — без описаний действий; что персонажи делают, должно угадываться из одних реплик.' },
+    { id: 'ransom', moods: ['chaos', 'ominous', 'fear'], intensity: 7, weight: 0.2, css: 'fx-ransom', desc: 'записка из вырезок', instruction: 'Оформи как записку из вырезанных букв: рваный, скачущий, угрожающий тон.' }
+  ];
+
   // ── Индексы: алиас/имя → каноническая запись ──────────────────────────────
   function norm(s) {
     return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
@@ -103,6 +122,7 @@
 
   var EFFECT_INDEX = buildIndex(EFFECTS);
   var COLOR_INDEX = buildIndex(COLORS);
+  var FORM_INDEX = buildIndex(FORMS);
   var MOOD_SET = {};
   MOODS.forEach(function (m) { MOOD_SET[norm(m)] = m; });
 
@@ -119,11 +139,13 @@
   ChaosFX.MOODS = MOODS;
   ChaosFX.EFFECTS = EFFECTS;
   ChaosFX.COLORS = COLORS;
+  ChaosFX.FORMS = FORMS;
   ChaosFX.MOOD_POOL = MOOD_POOL;
   ChaosFX.registry = {
     norm: norm,
     effect: function (name) { return EFFECT_INDEX[norm(name)] || null; },
     color: function (name) { return COLOR_INDEX[norm(name)] || null; },
+    form: function (name) { return FORM_INDEX[norm(name)] || null; },
     mood: function (name) { return MOOD_SET[norm(name)] || null; }
   };
 })(typeof window !== 'undefined' ? window : this);

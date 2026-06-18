@@ -76,10 +76,41 @@
       <summary>Show generated HTML</summary>
       <pre class="html" id="htmlout"></pre>
     </details>
+
+    <hr style="border:none;border-top:1px solid #2c2f36;margin:26px 0" />
+
+    <h1>Palette rotation</h1>
+    <p class="sub">Each turn the model gets a small handful of effects/colors, filtered by intensity ceiling and active moods, weighted-random. This is the block injected via <code>setExtensionPrompt</code>.</p>
+
+    <div class="controls">
+      <label>intensity ceiling
+        <input type="range" id="rot-intensity" min="0" max="10" value="5" />
+        <span id="rot-intensity-val">5</span>
+      </label>
+      <label>effects <input type="number" id="rot-fxn" value="6" min="0" max="32" style="width:52px"></label>
+      <label>colors <input type="number" id="rot-clrn" value="4" min="0" max="24" style="width:52px"></label>
+    </div>
+
+    <div class="stage-head">Active moods</div>
+    <div class="samples" id="rot-moods"></div>
+
+    <div class="controls">
+      <label>form
+        <select id="rot-form"><option value="">— none —</option></select>
+      </label>
+      <button id="rot-roll">🎲 roll palette</button>
+    </div>
+
+    <div class="stage-head">Rolled palette</div>
+    <div id="rot-out" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+
+    <div class="stage-head">Prompt block (goes to the model)</div>
+    <pre class="html" id="rot-prompt"></pre>
   </div>
 
   <script src="../data/registry.js"></script>
   <script src="../src/parser.js"></script>
+  <script src="../src/rotation.js"></script>
   <script>
     var input = document.getElementById('input');
     var stage = document.getElementById('stage');
@@ -129,6 +160,76 @@
 
     applyTheme();
     render();
+
+    // ── Palette rotation panel ──────────────────────────────────────────────
+    var rotIntensity = document.getElementById('rot-intensity');
+    var rotIntensityVal = document.getElementById('rot-intensity-val');
+    var rotFxN = document.getElementById('rot-fxn');
+    var rotClrN = document.getElementById('rot-clrn');
+    var rotForm = document.getElementById('rot-form');
+    var rotMoodsBox = document.getElementById('rot-moods');
+    var rotOut = document.getElementById('rot-out');
+    var rotPrompt = document.getElementById('rot-prompt');
+    var activeMoods = {};
+
+    ChaosFX.MOODS.forEach(function (m) {
+      var b = document.createElement('button');
+      b.textContent = m;
+      b.dataset.on = '0';
+      b.style.opacity = '0.5';
+      b.onclick = function () {
+        var on = b.dataset.on === '1';
+        b.dataset.on = on ? '0' : '1';
+        b.style.opacity = on ? '0.5' : '1';
+        b.style.background = on ? '#262a31' : '#3a4150';
+        activeMoods[m] = !on;
+        roll();
+      };
+      rotMoodsBox.appendChild(b);
+    });
+
+    ChaosFX.FORMS.forEach(function (f) {
+      var o = document.createElement('option');
+      o.value = f.id; o.textContent = f.id + ' — ' + f.desc;
+      rotForm.appendChild(o);
+    });
+
+    function chip(text, cls) {
+      var s = document.createElement('span');
+      s.textContent = text;
+      s.style.cssText = 'padding:4px 9px;border-radius:6px;border:1px solid #353a43;font-size:13px;';
+      if (cls) s.className = 'cfx-root ' + cls;
+      return s;
+    }
+
+    function roll() {
+      var moods = Object.keys(activeMoods).filter(function (m) { return activeMoods[m]; });
+      var res = ChaosFX.rotate({
+        intensity: parseInt(rotIntensity.value, 10),
+        moods: moods,
+        form: rotForm.value || null,
+        effectsCount: parseInt(rotFxN.value, 10) || 0,
+        colorsCount: parseInt(rotClrN.value, 10) || 0
+      });
+      rotOut.innerHTML = '';
+      res.effects.forEach(function (e) {
+        rotOut.appendChild(chip('[fx:' + e.id + '] ' + e.desc));
+      });
+      res.colors.forEach(function (c) {
+        rotOut.appendChild(chip('[' + c.id + ']', 'clr-' + c.id + ' fx-colored'));
+      });
+      rotPrompt.textContent = res.prompt;
+    }
+
+    rotIntensity.addEventListener('input', function () {
+      rotIntensityVal.textContent = rotIntensity.value; roll();
+    });
+    rotFxN.addEventListener('input', roll);
+    rotClrN.addEventListener('input', roll);
+    rotForm.addEventListener('change', roll);
+    document.getElementById('rot-roll').addEventListener('click', roll);
+
+    roll();
   </script>
 </body>
 </html>
