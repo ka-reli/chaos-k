@@ -129,6 +129,12 @@
       ['No raw leak', 'неизвестный эффект [fx:неведомое]тут[/fx] выкушен без следа']
     ];
 
+    // Галерея: каждый эффект на собственном имени.
+    var gallery = ChaosFX.EFFECTS.map(function (e) {
+      return '[fx:' + e.id + ']' + e.id + '[/fx]';
+    }).join('  ');
+    SAMPLES.push(['🎨 All effects', gallery]);
+
     var box = document.getElementById('samples');
     SAMPLES.forEach(function (s) {
       var b = document.createElement('button');
