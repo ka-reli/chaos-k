@@ -76,5 +76,13 @@ check('регистр/пробелы в метке', /data-fx="ember"/.test(r13)
 var r14 = CFX.parse('[fx:glow][ice]x[/][/]');
 check('generic-закрытие [/]', /fx-glow/.test(r14) && /clr-ice/.test(r14), r14);
 
+// 15. escape:false — готовый HTML сообщения не экранируется, метки разворачиваются.
+var r15 = CFX.parse('<em>курсив</em> [fx:glow]свет[/fx]', { escape: false });
+check('escape:false сохраняет html', /<em>курсив<\/em>/.test(r15) && /fx-glow/.test(r15), r15);
+
+// 16. strip снимает все метки, оставляя чистый текст.
+var r16 = CFX.strip('[fx:ember][blood]жар[/blood][/fx] и [ominous]тень[/ominous]', { escape: false });
+check('strip снимает метки', r16 === 'жар и тень', JSON.stringify(r16));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

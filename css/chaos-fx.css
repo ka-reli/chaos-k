@@ -156,6 +156,36 @@
   75%      { transform: translateY(3px) skewX(-2deg); }
 }
 
+/* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */
+/* Кнопка в строке сообщения вешает .cfx-readable на .mes_text — гасим всё
+   оформление, оставляя чистый текст. Полностью обратимо, без ре-парсинга. */
+.cfx-readable [data-fx],
+.cfx-readable [class*="clr-"] {
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  color: inherit !important;
+  opacity: 1 !important;
+  font-size: inherit !important;
+}
+
+/* ── Панель настроек (внутри drawer'а расширений ST) ──────────────────────── */
+.chaos-fx-settings .cfx-moods {
+  display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0;
+}
+.chaos-fx-settings .cfx-mood-chip {
+  padding: 3px 9px; border-radius: 12px; cursor: pointer; font-size: 12px;
+  border: 1px solid var(--SmartThemeBorderColor, #444); opacity: 0.55;
+  user-select: none;
+}
+.chaos-fx-settings .cfx-mood-chip.cfx-on {
+  opacity: 1; background: var(--SmartThemeQuoteColor, #3a4150);
+  border-color: var(--SmartThemeQuoteColor, #5a6); color: #fff;
+}
+.chaos-fx-settings .cfx-hint { opacity: 0.6; display: block; margin-top: 4px; }
+.cfx-readable-btn { cursor: pointer; }
+
 /* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
 /* Парсер сам подставляет reducedMotion-классы при ручном тумблере; это —
    страховка на уровне CSS для системной настройки (глушим анимации). */

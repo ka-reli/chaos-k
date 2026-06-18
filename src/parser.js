@@ -33,6 +33,7 @@
     budget: 14,           // сумма intensity применённых эффектов на сообщение
     reducedMotion: false, // a11y: применять поле reducedMotion
     theme: 'dark',        // для маркировки; реальные цвета — в CSS-переменных
+    escape: true,         // экранировать текст? (false — для готового HTML сообщения ST)
     rng: Math.random      // инъекция для детерминированных тестов
   };
 
@@ -189,7 +190,7 @@
 
   function renderNode(node, ctx) {
     if (node.kind === 'text') {
-      return escapeHtml(node.value);
+      return ctx.escape ? escapeHtml(node.value) : node.value;
     }
     if (node.kind === 'root') {
       return renderChildren(node, ctx);
@@ -251,13 +252,27 @@
       maxDepth: opts.maxDepth,
       budgetLeft: opts.budget,
       reducedMotion: !!opts.reducedMotion,
+      escape: opts.escape !== false,
       rng: opts.rng
     };
     var tree = buildTree(tokenize(input));
     return renderNode(tree, ctx);
   }
 
+  // Снять все метки, оставив чистый текст (для контекста модели и «читаемого» вида).
+  // escape=false по умолчанию: вход может быть готовым HTML сообщения.
+  function strip(input, options) {
+    var opts = options || {};
+    function walk(node) {
+      if (node.kind === 'text') return (opts.escape ? escapeHtml(node.value) : node.value);
+      if (!node.children) return '';
+      return node.children.map(walk).join('');
+    }
+    return walk(buildTree(tokenize(input)));
+  }
+
   ChaosFX.parse = parse;
+  ChaosFX.strip = strip;
   ChaosFX.tokenize = tokenize;       // экспорт для юнит-тестов
   ChaosFX.buildTree = buildTree;
   ChaosFX.escapeHtml = escapeHtml;
