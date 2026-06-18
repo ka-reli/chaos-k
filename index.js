@@ -80,32 +80,50 @@ function applyTheme() {
     document.body.classList.toggle('cfx-theme-light', !dark);
 }
 
-// ── Рендер: развернуть метки в DOM готового сообщения ────────────────────────
-function renderMessage(messageId) {
+// ── Рендер: развернуть метки в DOM сообщения ─────────────────────────────────
+// Флаг: мы сами сейчас пишем в DOM — наблюдатель должен игнорировать эти мутации.
+let cfxApplying = false;
+
+// Развернуть метки в одном .mes_text. Идемпотентно: если меток нет или они уже
+// развёрнуты, DOM не трогаем (можно звать сколько угодно раз).
+function expandTags(textEl) {
     const s = settings();
-    if (!s.enabled || !s.effects) return;
+    if (!s.enabled || !s.effects || !textEl) return;
+    const src = textEl.innerHTML;
+    if (src.indexOf('[') === -1) return; // быстрый выход: меток точно нет
 
-    const block = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
-    if (!block) return;
-    const textEl = block.querySelector('.mes_text');
-    if (!textEl || textEl.dataset.cfxDone === '1') return;
-
-    // Работаем по уже отрендеренному HTML (markdown сохраняется): escape off.
-    const html = CFX.parse(textEl.innerHTML, {
-        escape: false,
+    const html = CFX.parse(src, {
+        escape: false, // работаем по готовому HTML — markdown сохраняется
         budget: s.budget,
         reducedMotion: s.reducedMotion,
         theme: resolveTheme(),
     });
-    textEl.innerHTML = html;
-    textEl.dataset.cfxDone = '1';
+    if (html === src) return; // распознанных меток не нашлось — не дёргаем DOM
 
-    // Восстановить состояние «читаемого» вида, если было сохранено.
+    cfxApplying = true;
+    textEl.innerHTML = html;
+    cfxApplying = false;
+}
+
+// Полная обработка одного сообщения: метки + восстановление «читаемого» + кнопка.
+function processBlock(block) {
+    if (!block) return;
+    const textEl = block.querySelector('.mes_text');
+    if (!textEl) return;
+    expandTags(textEl);
+
+    const messageId = block.getAttribute('mesid');
     const ctx = getContext();
     const msg = ctx.chat?.[messageId];
     if (msg?.extra?.cfxReadable) textEl.classList.add('cfx-readable');
 
     addReadableButton(block, textEl, messageId);
+}
+
+// Обработчик событий рендера (получает messageId).
+function renderMessage(messageId) {
+    const block = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
+    processBlock(block);
 }
 
 // ── Кнопка «сделать читаемым» ────────────────────────────────────────────────
@@ -128,6 +146,38 @@ function addReadableButton(block, textEl, messageId) {
         }
     });
     row.prepend(btn);
+}
+
+// ── Наблюдатель за DOM чата ───────────────────────────────────────────────────
+// Страховка от стриминга и повторных рендеров ST: когда .mes_text меняется и в
+// нём появляются сырые метки — доразворачиваем (с дебаунсом, чтобы не дёргать
+// на каждый токен). Покрывает случай «модель пишет метки, но они не оформляются».
+const cfxPending = new Set();
+let cfxFlushTimer = null;
+
+function scheduleFlush() {
+    clearTimeout(cfxFlushTimer);
+    cfxFlushTimer = setTimeout(() => {
+        const blocks = [...cfxPending];
+        cfxPending.clear();
+        blocks.forEach(processBlock);
+    }, 180);
+}
+
+function startObserver() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    const observer = new MutationObserver((mutations) => {
+        if (cfxApplying) return; // не реагируем на собственную запись
+        for (const m of mutations) {
+            const t = m.target;
+            const el = t.nodeType === 1 ? t : t.parentElement;
+            const block = el && el.closest ? el.closest('.mes') : null;
+            if (block) cfxPending.add(block);
+        }
+        if (cfxPending.size) scheduleFlush();
+    });
+    observer.observe(chat, { childList: true, subtree: true, characterData: true });
 }
 
 // ── Подсказка модели: ротация палитры перед генерацией ───────────────────────
@@ -251,12 +301,9 @@ function wireSettings() {
     });
 }
 
-// Перерендер при правке/свайпе: сбросить флаг и развернуть метки заново.
-function rerenderMessage(messageId) {
-    const block = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
-    const el = block?.querySelector('.mes_text');
-    if (el) delete el.dataset.cfxDone;
-    renderMessage(messageId);
+// Обработать все сообщения в чате (загрузка/смена чата).
+function processAll() {
+    document.querySelectorAll('#chat .mes').forEach(processBlock);
 }
 
 // ── Старт ────────────────────────────────────────────────────────────────────
@@ -264,14 +311,16 @@ jQuery(() => {
     settings();
     applyTheme();
     buildSettingsPanel();
+    startObserver();
 
+    // Рендер по событиям (на всякий случай — наблюдатель тоже подхватит).
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, renderMessage);
     eventSource.on(event_types.USER_MESSAGE_RENDERED, renderMessage);
 
-    // Фикс №1: после правки/свайпа сообщение перерисовывается из сырого текста —
-    // прогоняем метки заново. Имена событий могут отличаться по версии ST.
+    // После правки/свайпа сообщение перерисовывается из сырого текста.
+    // Обработка идемпотентна, имена событий могут отличаться по версии ST.
     [event_types.MESSAGE_UPDATED, event_types.MESSAGE_EDITED, event_types.MESSAGE_SWIPED]
-        .forEach((ev) => { if (ev) eventSource.on(ev, rerenderMessage); });
+        .forEach((ev) => { if (ev) eventSource.on(ev, renderMessage); });
 
     // Запасная инъекция палитры (на случай, если generate_interceptor
     // не вызывается в этой версии ST).
@@ -283,12 +332,9 @@ jQuery(() => {
         });
     }
 
-    // Перерисовка при загрузке/смене чата — метки в старых сообщениях.
-    eventSource.on(event_types.CHAT_CHANGED, () => {
-        document.querySelectorAll('#chat .mes_text[data-cfx-done="1"]').forEach((el) => {
-            delete el.dataset.cfxDone;
-        });
-    });
+    // Метки в старых сообщениях при загрузке/смене чата.
+    eventSource.on(event_types.CHAT_CHANGED, () => setTimeout(processAll, 100));
+    setTimeout(processAll, 300);
 
     console.log('[Chaos-FX] loaded');
 });
