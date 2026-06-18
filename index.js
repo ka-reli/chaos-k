@@ -145,6 +145,7 @@ function injectPalette() {
     });
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
     setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
+    console.debug('[Chaos-FX] palette injected:\n' + res.prompt);
 }
 
 // ── Перехватчик генерации (manifest: generate_interceptor) ───────────────────
@@ -152,6 +153,7 @@ function injectPalette() {
 // и, по желанию, чистим метки из истории.
 globalThis.chaosFxInterceptor = async function (chat, _contextSize, _abort, type) {
     const s = settings();
+    console.debug('[Chaos-FX] interceptor fired, type=' + type);
     if (!s.enabled) return;
     if (type === 'quiet') return; // тихие фоновые генерации не трогаем
 
@@ -249,6 +251,14 @@ function wireSettings() {
     });
 }
 
+// Перерендер при правке/свайпе: сбросить флаг и развернуть метки заново.
+function rerenderMessage(messageId) {
+    const block = document.querySelector(`#chat .mes[mesid="${messageId}"]`);
+    const el = block?.querySelector('.mes_text');
+    if (el) delete el.dataset.cfxDone;
+    renderMessage(messageId);
+}
+
 // ── Старт ────────────────────────────────────────────────────────────────────
 jQuery(() => {
     settings();
@@ -257,6 +267,22 @@ jQuery(() => {
 
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, renderMessage);
     eventSource.on(event_types.USER_MESSAGE_RENDERED, renderMessage);
+
+    // Фикс №1: после правки/свайпа сообщение перерисовывается из сырого текста —
+    // прогоняем метки заново. Имена событий могут отличаться по версии ST.
+    [event_types.MESSAGE_UPDATED, event_types.MESSAGE_EDITED, event_types.MESSAGE_SWIPED]
+        .forEach((ev) => { if (ev) eventSource.on(ev, rerenderMessage); });
+
+    // Запасная инъекция палитры (на случай, если generate_interceptor
+    // не вызывается в этой версии ST).
+    if (event_types.GENERATION_STARTED) {
+        eventSource.on(event_types.GENERATION_STARTED, (type, _opts, dryRun) => {
+            if (dryRun) return;
+            if (type === 'quiet') return;
+            injectPalette();
+        });
+    }
+
     // Перерисовка при загрузке/смене чата — метки в старых сообщениях.
     eventSource.on(event_types.CHAT_CHANGED, () => {
         document.querySelectorAll('#chat .mes_text[data-cfx-done="1"]').forEach((el) => {
