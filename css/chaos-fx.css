@@ -156,6 +156,229 @@
   75%      { transform: translateY(3px) skewX(-2deg); }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Остальные эффекты (докрашены). Каждый рассчитан на безопасное «состояние
+   покоя»: если убрать анимацию (reduced-motion), текст остаётся читаемым.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* rainbow — переливается всеми цветами (colorBased). */
+.cfx-root .fx-rainbow {
+  background: linear-gradient(90deg, #ff3b3b, #ff9e2b, #ffe93b, #5bff7a, #5bb8ff, #b98cff, #ff5cc8);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cfx-rainbow 3s linear infinite;
+}
+@keyframes cfx-rainbow { to { background-position: 200% center; } }
+.cfx-root .fx-rainbow-static {
+  background: linear-gradient(90deg, #ff3b3b, #ff9e2b, #ffe93b, #5bff7a, #5bb8ff, #b98cff, #ff5cc8);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+
+/* frost — холодный голубой блеск (colorBased). */
+.cfx-root .fx-frost {
+  color: var(--cfx-clr, #9fe3ff);
+  animation: cfx-frost 3s ease-in-out infinite;
+}
+@keyframes cfx-frost {
+  0%, 100% { text-shadow: 0 0 3px #cfefff, 0 0 6px #7ec8ff; }
+  50%      { text-shadow: 0 0 6px #ffffff, 0 0 12px #9fe3ff; }
+}
+.cfx-root .fx-frost-static { color: var(--cfx-clr, #9fe3ff); text-shadow: 0 0 5px #cfefff, 0 0 10px #7ec8ff; }
+
+/* gold — благородное золотое мерцание (colorBased). */
+.cfx-root .fx-gold {
+  background: linear-gradient(90deg, #a97c1e, #ffe9a3, #a97c1e);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cfx-gold 2.6s linear infinite;
+}
+@keyframes cfx-gold { to { background-position: 200% center; } }
+.cfx-root .fx-gold-static { color: var(--cfx-clr, #ffc24d); text-shadow: 0 0 4px #ffe9a3; }
+
+/* sickly — нездоровое зелёное свечение (colorBased). */
+.cfx-root .fx-sickly {
+  color: var(--cfx-clr, #9dff3c);
+  animation: cfx-sickly 2.2s ease-in-out infinite;
+}
+@keyframes cfx-sickly {
+  0%, 100% { text-shadow: 0 0 4px #6abf2a; filter: hue-rotate(0deg); opacity: 0.9; }
+  50%      { text-shadow: 0 0 10px #aaff5e, 0 0 16px #5a9a1a; filter: hue-rotate(-12deg); opacity: 1; }
+}
+.cfx-root .fx-sickly-static { color: var(--cfx-clr, #9dff3c); text-shadow: 0 0 8px #6abf2a; }
+
+/* spark — искры и блёстки (colorBased). */
+.cfx-root .fx-spark {
+  color: var(--cfx-clr, currentColor);
+  animation: cfx-spark 1.4s ease-in-out infinite;
+}
+@keyframes cfx-spark {
+  0%, 100% { text-shadow: 0 0 2px #fff; }
+  30%      { text-shadow: -3px -2px 3px #fff, 2px 3px 4px #ffe9a3; }
+  60%      { text-shadow: 3px -3px 3px #fff, -2px 2px 4px #b8e6ff; }
+}
+.cfx-root .fx-spark-static { text-shadow: 0 0 4px #fff, 1px 1px 3px #ffe9a3; }
+
+/* electric — потрескивающие молнии (colorBased). */
+.cfx-root .fx-electric {
+  color: var(--cfx-clr, #cfeaff);
+  animation: cfx-electric 0.25s steps(2) infinite;
+}
+@keyframes cfx-electric {
+  0%   { text-shadow: 0 0 4px #7ecbff, 0 0 8px #2b6cff; transform: translate(0, 0); }
+  50%  { text-shadow: 1px 0 5px #fff, 0 0 10px #5b8cff; transform: translate(0.5px, -0.5px); }
+  100% { text-shadow: -1px 0 4px #7ecbff, 0 0 8px #2b6cff; transform: translate(-0.5px, 0.5px); }
+}
+.cfx-root .fx-electric-static { color: var(--cfx-clr, #cfeaff); text-shadow: 0 0 5px #7ecbff, 0 0 10px #2b6cff; }
+
+/* sway — плавное покачивание, дрейф. */
+.cfx-root .fx-sway { animation: cfx-sway 3.4s ease-in-out infinite; }
+@keyframes cfx-sway {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25%      { transform: translateX(2px) rotate(1.2deg); }
+  75%      { transform: translateX(-2px) rotate(-1.2deg); }
+}
+
+/* heartbeat — пульсация как сердце. */
+.cfx-root .fx-heartbeat { animation: cfx-heartbeat 1.3s ease-in-out infinite; }
+@keyframes cfx-heartbeat {
+  0%, 40%, 100% { transform: scale(1); }
+  10%           { transform: scale(1.18); }
+  20%           { transform: scale(1); }
+  30%           { transform: scale(1.12); }
+}
+
+/* drip — буквы стекают вниз. */
+.cfx-root .fx-drip { animation: cfx-drip 2.6s ease-in infinite; }
+@keyframes cfx-drip {
+  0%   { transform: translateY(0) scaleY(1); filter: blur(0); }
+  70%  { transform: translateY(3px) scaleY(1.18); filter: blur(0.4px); }
+  100% { transform: translateY(0) scaleY(1); filter: blur(0); }
+}
+
+/* rise — слова всплывают вверх. */
+.cfx-root .fx-rise { animation: cfx-rise 3s ease-in-out infinite; }
+@keyframes cfx-rise {
+  0%, 100% { transform: translateY(0); opacity: 0.85; }
+  50%      { transform: translateY(-4px); opacity: 1; }
+}
+
+/* jitter — нервная частая вибрация. */
+.cfx-root .fx-jitter { animation: cfx-jitter 0.12s steps(2) infinite; }
+@keyframes cfx-jitter {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-0.6px, 0.6px); }
+  50%  { transform: translate(0.6px, -0.6px); }
+  75%  { transform: translate(-0.6px, -0.6px); }
+  100% { transform: translate(0.6px, 0.6px); }
+}
+
+/* blur — размытие, смаз. */
+.cfx-root .fx-blur { animation: cfx-blur 3s ease-in-out infinite; }
+@keyframes cfx-blur {
+  0%, 100% { filter: blur(0); }
+  50%      { filter: blur(1.6px); }
+}
+.cfx-root .fx-blur-static { filter: blur(1px); }
+
+/* melt — текст тает и растекается. */
+.cfx-root .fx-melt { transform-origin: top center; animation: cfx-melt 3.2s ease-in-out infinite; }
+@keyframes cfx-melt {
+  0%, 100% { transform: scaleY(1) skewX(0deg); filter: blur(0); }
+  50%      { transform: scaleY(1.35) skewX(-3deg); filter: blur(0.6px); }
+}
+
+/* scramble — буквы мешаются (CSS-приближение, точный перебор — позже на JS). */
+.cfx-root .fx-scramble { animation: cfx-scramble 0.3s steps(3) infinite; }
+@keyframes cfx-scramble {
+  0%   { transform: translate(0, 0); filter: blur(0); }
+  33%  { transform: translate(1px, -1px); filter: blur(0.5px); }
+  66%  { transform: translate(-1px, 1px); filter: blur(0.3px); }
+  100% { transform: translate(0, 0); filter: blur(0); }
+}
+
+/* handwritten — будто написано от руки. */
+.cfx-root .fx-handwritten {
+  font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
+  transform: rotate(-1.5deg);
+}
+
+/* typewriter — моноширинный шрифт с мигающим курсором. */
+.cfx-root .fx-typewriter {
+  font-family: ui-monospace, 'Courier New', monospace;
+  border-right: 0.1em solid currentColor; padding-right: 1px;
+  animation: cfx-caret 1s steps(1) infinite;
+}
+@keyframes cfx-caret { 50% { border-color: transparent; } }
+
+/* flicker-in — мерцает, как плохой сигнал (в покое — видно). */
+.cfx-root .fx-flicker-in { animation: cfx-flicker 2.4s steps(1) infinite; }
+@keyframes cfx-flicker {
+  0%, 100% { opacity: 1; }
+  8%  { opacity: 0.3; } 10% { opacity: 1; } 12% { opacity: 0.5; } 14% { opacity: 1; }
+  62% { opacity: 0.2; } 64% { opacity: 1; }
+}
+
+/* whisper — мелкий, бледный, едва видный (special). */
+.cfx-root .fx-whisper { font-size: 0.82em; opacity: 0.55; letter-spacing: 0.3px; }
+
+/* smoke — буквы курятся дымкой (special). */
+.cfx-root .fx-smoke { animation: cfx-smoke 3.5s ease-in-out infinite; }
+@keyframes cfx-smoke {
+  0%   { filter: blur(0); opacity: 0.85; transform: translateY(0) skewX(0deg); }
+  50%  { filter: blur(1.2px); opacity: 0.6; transform: translateY(-2px) skewX(3deg); }
+  100% { filter: blur(0.3px); opacity: 0.85; transform: translateY(0) skewX(0deg); }
+}
+
+/* negative — инверсия цветов (special). */
+.cfx-root .fx-negative { filter: invert(1); }
+
+/* redacted — чёрная плашка, спадает по наведению (special). */
+.cfx-root .fx-redacted {
+  background: #0b0b0b; color: #0b0b0b; border-radius: 2px;
+  transition: color 0.2s, background 0.2s;
+}
+.cfx-root .fx-redacted:hover { background: rgba(0, 0, 0, 0.15); color: inherit; }
+
+/* shout — огромный, жирный, дёрганый. */
+.cfx-root .fx-shout {
+  font-weight: 900; font-size: 1.5em; text-transform: uppercase; letter-spacing: 0.5px;
+  animation: cfx-shout 0.18s ease-in-out infinite;
+}
+@keyframes cfx-shout {
+  0%, 100% { transform: scale(1.05) rotate(-1deg); }
+  50%      { transform: scale(1.12) rotate(1deg); }
+}
+.cfx-root .fx-shout-static {
+  font-weight: 900; font-size: 1.5em; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* spiral — закручивается спиралью (spatial). */
+.cfx-root .fx-spiral { transform-origin: center; animation: cfx-spiral 6s linear infinite; }
+@keyframes cfx-spiral {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(0.85); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* upsidedown — текст вверх ногами (spatial). */
+.cfx-root .fx-upsidedown { transform: rotate(180deg); }
+
+/* mirror — зеркальное отражение (spatial). */
+.cfx-root .fx-mirror { transform: scaleX(-1); }
+
+/* scatter — слова разбросаны (CSS-приближение, точный разброс — позже на JS). */
+.cfx-root .fx-scatter {
+  letter-spacing: 0.35em; word-spacing: 0.5em;
+  animation: cfx-scatter 4s ease-in-out infinite;
+}
+@keyframes cfx-scatter {
+  0%, 100% { transform: rotate(-1deg) skewX(-3deg); }
+  50%      { transform: rotate(1deg) skewX(3deg); }
+}
+
 /* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */
 /* Кнопка в строке сообщения вешает .cfx-readable на .mes_text — гасим всё
    оформление, оставляя чистый текст. Полностью обратимо, без ре-парсинга. */
@@ -187,15 +410,9 @@
 .cfx-readable-btn { cursor: pointer; }
 
 /* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
-/* Парсер сам подставляет reducedMotion-классы при ручном тумблере; это —
-   страховка на уровне CSS для системной настройки (глушим анимации). */
+/* Парсер сам подставляет reducedMotion-замены при ручном тумблере; это —
+   страховка на уровне CSS для СИСТЕМНОЙ настройки: глушим все анимации.
+   Каждый эффект спроектирован так, что в покое текст остаётся читаемым. */
 @media (prefers-reduced-motion: reduce) {
-  .cfx-root .fx-glow,
-  .cfx-root .fx-ember,
-  .cfx-root .fx-shake,
-  .cfx-root .fx-glitch,
-  .cfx-root .fx-ghost,
-  .cfx-root .fx-wave {
-    animation: none !important;
-  }
+  .cfx-root [data-fx] { animation: none !important; }
 }
