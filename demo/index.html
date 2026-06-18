@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaos-FX — test bench</title>
+  <link rel="stylesheet" href="../css/chaos-fx.css" />
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 24px;
+      font: 16px/1.6 -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #1b1d22; color: #d8dce2;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #8b909a; font-size: 13px; margin: 0 0 18px; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    textarea {
+      width: 100%; min-height: 150px; box-sizing: border-box;
+      background: #14161a; color: #e6e9ee; border: 1px solid #2c2f36;
+      border-radius: 8px; padding: 12px; font-family: ui-monospace, monospace;
+      font-size: 14px; resize: vertical;
+    }
+    .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 12px 0; }
+    .controls label { font-size: 13px; color: #aeb3bb; display: inline-flex; gap: 6px; align-items: center; }
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 16px; }
+    .samples button, .controls button {
+      background: #262a31; color: #cfd4db; border: 1px solid #353a43;
+      border-radius: 6px; padding: 6px 11px; font-size: 13px; cursor: pointer;
+    }
+    .samples button:hover, .controls button:hover { background: #2f343d; }
+    .stage-head { color: #8b909a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; }
+    #stage {
+      background var(--stage-bg, #202329);
+      background: var(--stage-bg, #202329);
+      border: 1px solid #2c2f36; border-radius: 8px; padding: 18px;
+      min-height: 90px; font-size: 19px; line-height: 1.9; white-space: pre-wrap;
+    }
+    #stage.bg-light { --stage-bg: #ece8e0; color: #20242b; }
+    details { margin-top: 18px; }
+    summary { cursor: pointer; color: #8b909a; font-size: 13px; }
+    pre.html { background: #14161a; border: 1px solid #2c2f36; border-radius: 8px;
+      padding: 12px; overflow: auto; font-size: 12px; color: #9aa0a8; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Chaos-FX — test bench</h1>
+    <p class="sub">The “tag → screen” path. Type tags in the field, see the result on the stage. Source of truth: <code>data/registry.js</code>.</p>
+
+    <textarea id="input">Огонь в очаге [fx:ember][blood]потрескивал[/blood][/fx], пока за окном [fx:ghost]кто-то[/fx] шептал твоё имя.
+
+Настроение целиком: [ominous]что-то приближается[/ominous].
+
+Цвет без эффекта: [void]бездна смотрит в ответ[/void], а вот [fx:glow][ice]ледяной свет[/ice][/fx].
+
+Пространственный: [fx:wave]вся эта строка тихо колышется как на воде[/fx].
+
+Глитч и дрожь: [fx:glitch]сигнал[/fx] и [fx:shake]рука дрожит[/fx].
+
+Это [не метка](https://example.com) — markdown-ссылка не должна сломаться. И [неизвестное] слово тоже.</textarea>
+
+    <div class="samples" id="samples"></div>
+
+    <div class="controls">
+      <label><input type="checkbox" id="reduced" /> reduced-motion (static)</label>
+      <label><input type="checkbox" id="lightbg" /> light stage background</label>
+      <label>budget <input type="number" id="budget" value="14" min="0" max="60" style="width:56px"></label>
+      <button id="reroll" title="re-roll effects for mood tags">↻ re-render</button>
+    </div>
+
+    <div class="stage-head">Stage</div>
+    <div id="stage" class="cfx-root"></div>
+
+    <details>
+      <summary>Show generated HTML</summary>
+      <pre class="html" id="htmlout"></pre>
+    </details>
+
+    <hr style="border:none;border-top:1px solid #2c2f36;margin:26px 0" />
+
+    <h1>Palette rotation</h1>
+    <p class="sub">Each turn the model gets a small handful of effects/colors, filtered by intensity ceiling and active moods, weighted-random. This is the block injected via <code>setExtensionPrompt</code>.</p>
+
+    <div class="controls">
+      <label>intensity ceiling
+        <input type="range" id="rot-intensity" min="0" max="10" value="5" />
+        <span id="rot-intensity-val">5</span>
+      </label>
+      <label>effects <input type="number" id="rot-fxn" value="6" min="0" max="32" style="width:52px"></label>
+      <label>colors <input type="number" id="rot-clrn" value="4" min="0" max="24" style="width:52px"></label>
+    </div>
+
+    <div class="stage-head">Active moods</div>
+    <div class="samples" id="rot-moods"></div>
+
+    <div class="controls">
+      <label>form
+        <select id="rot-form"><option value="">— none —</option></select>
+      </label>
+      <button id="rot-roll">🎲 roll palette</button>
+    </div>
+
+    <div class="stage-head">Rolled palette</div>
+    <div id="rot-out" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+
+    <div class="stage-head">Prompt block (goes to the model)</div>
+    <pre class="html" id="rot-prompt"></pre>
+  </div>
+
+  <script src="../data/registry.js"></script>
+  <script src="../src/parser.js"></script>
+  <script src="../src/rotation.js"></script>
+  <script>
+    var input = document.getElementById('input');
+    var stage = document.getElementById('stage');
+    var htmlout = document.getElementById('htmlout');
+    var reduced = document.getElementById('reduced');
+    var lightbg = document.getElementById('lightbg');
+    var budget = document.getElementById('budget');
+
+    var SAMPLES = [
+      ['Nesting', '[fx:ember][blood]пылающая кровь[/blood][/fx]'],
+      ['Mood', '[psychedelic]реальность плывёт[/psychedelic]'],
+      ['Spatial (too long → fail)', '[fx:wave]' + 'очень длинная строка '.repeat(15) + '[/fx]'],
+      ['Forgotten close', 'модель забыла закрыть [fx:glow][gold]метку и всё'],
+      ['Colors only', '[blood]кровь[/blood] [ice]лёд[/ice] [void]бездна[/void] [violet]фиолет[/violet] [gold]золото[/gold]'],
+      ['Budget (overflow)', '[fx:glitch]а[/fx][fx:ember]б[/fx][fx:glow]в[/fx][fx:glitch]г[/fx][fx:ember]д[/fx]'],
+      ['No raw leak', 'неизвестный эффект [fx:неведомое]тут[/fx] выкушен без следа']
+    ];
+
+    var box = document.getElementById('samples');
+    SAMPLES.forEach(function (s) {
+      var b = document.createElement('button');
+      b.textContent = s[0];
+      b.onclick = function () { input.value = s[1]; render(); };
+      box.appendChild(b);
+    });
+
+    function render() {
+      var html = ChaosFX.parse(input.value, {
+        reducedMotion: reduced.checked,
+        budget: parseInt(budget.value, 10) || 0,
+        theme: lightbg.checked ? 'light' : 'dark'
+      });
+      stage.innerHTML = html;
+      htmlout.textContent = html;
+    }
+
+    function applyTheme() {
+      stage.classList.toggle('cfx-theme-light', lightbg.checked);
+      stage.classList.toggle('bg-light', lightbg.checked);
+    }
+
+    input.addEventListener('input', render);
+    reduced.addEventListener('change', render);
+    budget.addEventListener('input', render);
+    lightbg.addEventListener('change', function () { applyTheme(); render(); });
+    document.getElementById('reroll').addEventListener('click', render);
+
+    applyTheme();
+    render();
+
+    // ── Palette rotation panel ──────────────────────────────────────────────
+    var rotIntensity = document.getElementById('rot-intensity');
+    var rotIntensityVal = document.getElementById('rot-intensity-val');
+    var rotFxN = document.getElementById('rot-fxn');
+    var rotClrN = document.getElementById('rot-clrn');
+    var rotForm = document.getElementById('rot-form');
+    var rotMoodsBox = document.getElementById('rot-moods');
+    var rotOut = document.getElementById('rot-out');
+    var rotPrompt = document.getElementById('rot-prompt');
+    var activeMoods = {};
+
+    ChaosFX.MOODS.forEach(function (m) {
+      var b = document.createElement('button');
+      b.textContent = m;
+      b.dataset.on = '0';
+      b.style.opacity = '0.5';
+      b.onclick = function () {
+        var on = b.dataset.on === '1';
+        b.dataset.on = on ? '0' : '1';
+        b.style.opacity = on ? '0.5' : '1';
+        b.style.background = on ? '#262a31' : '#3a4150';
+        activeMoods[m] = !on;
+        roll();
+      };
+      rotMoodsBox.appendChild(b);
+    });
+
+    ChaosFX.FORMS.forEach(function (f) {
+      var o = document.createElement('option');
+      o.value = f.id; o.textContent = f.id + ' — ' + f.desc;
+      rotForm.appendChild(o);
+    });
+
+    function chip(text, cls) {
+      var s = document.createElement('span');
+      s.textContent = text;
+      s.style.cssText = 'padding:4px 9px;border-radius:6px;border:1px solid #353a43;font-size:13px;';
+      if (cls) s.className = 'cfx-root ' + cls;
+      return s;
+    }
+
+    function roll() {
+      var moods = Object.keys(activeMoods).filter(function (m) { return activeMoods[m]; });
+      var res = ChaosFX.rotate({
+        intensity: parseInt(rotIntensity.value, 10),
+        moods: moods,
+        form: rotForm.value || null,
+        effectsCount: parseInt(rotFxN.value, 10) || 0,
+        colorsCount: parseInt(rotClrN.value, 10) || 0
+      });
+      rotOut.innerHTML = '';
+      res.effects.forEach(function (e) {
+        rotOut.appendChild(chip('[fx:' + e.id + '] ' + e.desc));
+      });
+      res.colors.forEach(function (c) {
+        rotOut.appendChild(chip('[' + c.id + ']', 'clr-' + c.id + ' fx-colored'));
+      });
+      rotPrompt.textContent = res.prompt;
+    }
+
+    rotIntensity.addEventListener('input', function () {
+      rotIntensityVal.textContent = rotIntensity.value; roll();
+    });
+    rotFxN.addEventListener('input', roll);
+    rotClrN.addEventListener('input', roll);
+    rotForm.addEventListener('change', roll);
+    document.getElementById('rot-roll').addEventListener('click', roll);
+
+    roll();
+  </script>
+</body>
+</html>
