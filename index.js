@@ -47,8 +47,7 @@ const defaultSettings = {
     theme: 'auto',        // auto | dark | light
     stripFromContext: false, // вырезать метки из истории перед отправкой
     // Макро-формы (весь ответ как рецепт/пьеса/досье и т.д.)
-    formsEnabled: false,  // слой макро-форм
-    formMode: 'random',   // off | random | forced
+    formMode: 'off',      // off | random | forced  (единственный тумблер слоя)
     forcedForm: '',       // id формы при formMode === 'forced'
     formChance: 25,       // шанс формы на ход (%) при formMode === 'random'
 };
@@ -215,8 +214,8 @@ function injectPalette() {
 }
 
 // Решить, какая форма (если есть) уйдёт модели в этот ход.
+// Всем рулит formMode: 'off' — выключено, без отдельного master-тумблера.
 function chooseForm(s) {
-    if (!s.formsEnabled) return null;
     if (s.formMode === 'forced') {
         return s.forcedForm || (CFX.FORMS[0] && CFX.FORMS[0].id) || null;
     }
@@ -305,7 +304,7 @@ function buildSettingsPanel() {
           <small class="cfx-hint">Empty = all moods. The director (coming later) will set these automatically.</small>
 
           <hr class="cfx-sep">
-          <label class="checkbox_label"><input type="checkbox" id="cfx-forms" ${s.formsEnabled ? 'checked' : ''}> Macro-forms layer</label>
+          <div><b>Macro-forms</b> — reshape the whole reply</div>
           <label>Form mode
             <select id="cfx-form-mode" class="text_pole">
               <option value="off" ${s.formMode === 'off' ? 'selected' : ''}>Off</option>
@@ -356,12 +355,9 @@ function wireSettings() {
 
     // Макро-формы.
     const refreshFormRows = () => {
-        const random = s.formMode === 'random' && s.formsEnabled;
-        const forced = s.formMode === 'forced' && s.formsEnabled;
-        $('#cfx-form-chance-row').toggle(random);
-        $('#cfx-forced-form-row').toggle(forced);
+        $('#cfx-form-chance-row').toggle(s.formMode === 'random');
+        $('#cfx-forced-form-row').toggle(s.formMode === 'forced');
     };
-    $('#cfx-forms').on('change', function () { s.formsEnabled = this.checked; refreshFormRows(); save(); });
     $('#cfx-form-mode').on('change', function () { s.formMode = this.value; refreshFormRows(); save(); });
     $('#cfx-form-chance').on('input', function () {
         s.formChance = +this.value || 0; $('#cfx-form-chance-val').text(this.value); save();
