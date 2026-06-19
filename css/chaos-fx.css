@@ -198,6 +198,13 @@
 @keyframes cfx-gold { to { background-position: 200% center; } }
 .cfx-root .fx-gold-static { color: var(--cfx-clr, #ffc24d); text-shadow: 0 0 4px #ffe9a3; }
 
+/* rainbow и анимированный gold залиты градиентом по тексту (background-clip)
+   с прозрачной заливкой — контрастная обводка (.fx-colored) делает на них
+   грязный тёмный ореол, «заслоняющий» буквы. Снимаем её именно у них. */
+.cfx-root .fx-rainbow,
+.cfx-root .fx-rainbow-static,
+.cfx-root .fx-gold { text-shadow: none; }
+
 /* sickly — нездоровое зелёное свечение (colorBased). */
 .cfx-root .fx-sickly {
   color: var(--cfx-clr, #9dff3c);
