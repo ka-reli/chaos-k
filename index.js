@@ -46,6 +46,11 @@ const defaultSettings = {
     reducedMotion: false, // ручной reduced-motion
     theme: 'auto',        // auto | dark | light
     stripFromContext: false, // вырезать метки из истории перед отправкой
+    // Макро-формы (весь ответ как рецепт/пьеса/досье и т.д.)
+    formsEnabled: false,  // слой макро-форм
+    formMode: 'random',   // off | random | forced
+    forcedForm: '',       // id формы при formMode === 'forced'
+    formChance: 25,       // шанс формы на ход (%) при formMode === 'random'
 };
 
 function settings() {
@@ -192,10 +197,23 @@ function injectPalette() {
         moods: s.moods,
         effectsCount: s.effectsCount,
         colorsCount: s.colorsCount,
+        form: chooseForm(s),
     });
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
     setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
     console.debug('[Chaos-FX] palette injected:\n' + res.prompt);
+}
+
+// Решить, какая форма (если есть) уйдёт модели в этот ход.
+function chooseForm(s) {
+    if (!s.formsEnabled) return null;
+    if (s.formMode === 'forced') return s.forcedForm || null;
+    if (s.formMode === 'random') {
+        if (Math.random() * 100 >= s.formChance) return null;
+        const f = CFX.pickForm({ moods: s.moods, intensity: s.intensity });
+        return f ? f.id : null;
+    }
+    return null;
 }
 
 // ── Перехватчик генерации (manifest: generate_interceptor) ───────────────────
@@ -233,6 +251,11 @@ function buildSettingsPanel() {
         return `<span class="cfx-mood-chip${on}" data-mood="${m}">${m}</span>`;
     }).join('');
 
+    const formOptions = CFX.FORMS.map((f) => {
+        const sel = s.forcedForm === f.id ? 'selected' : '';
+        return `<option value="${f.id}" ${sel}>${f.id} — ${f.desc}</option>`;
+    }).join('');
+
     const html = `
     <div class="chaos-fx-settings">
       <div class="inline-drawer">
@@ -268,6 +291,23 @@ function buildSettingsPanel() {
           <div>Active moods (manual mode)</div>
           <div class="cfx-moods">${moodChips}</div>
           <small class="cfx-hint">Empty = all moods. The director (coming later) will set these automatically.</small>
+
+          <hr class="cfx-sep">
+          <label class="checkbox_label"><input type="checkbox" id="cfx-forms" ${s.formsEnabled ? 'checked' : ''}> Macro-forms layer</label>
+          <label>Form mode
+            <select id="cfx-form-mode" class="text_pole">
+              <option value="off" ${s.formMode === 'off' ? 'selected' : ''}>Off</option>
+              <option value="random" ${s.formMode === 'random' ? 'selected' : ''}>Random (by chance)</option>
+              <option value="forced" ${s.formMode === 'forced' ? 'selected' : ''}>Forced (always)</option>
+            </select>
+          </label>
+          <label id="cfx-form-chance-row">Form chance: <span id="cfx-form-chance-val">${s.formChance}</span>%
+            <input type="range" id="cfx-form-chance" min="0" max="100" value="${s.formChance}">
+          </label>
+          <label id="cfx-forced-form-row">Forced form
+            <select id="cfx-forced-form" class="text_pole">${formOptions}</select>
+          </label>
+          <small class="cfx-hint">Forms reshape the whole reply (recipe, play, dossier…). The model formats text per the form's instruction.</small>
         </div>
       </div>
     </div>`;
@@ -299,6 +339,21 @@ function wireSettings() {
         else { s.moods.splice(i, 1); this.classList.remove('cfx-on'); }
         save();
     });
+
+    // Макро-формы.
+    const refreshFormRows = () => {
+        const random = s.formMode === 'random' && s.formsEnabled;
+        const forced = s.formMode === 'forced' && s.formsEnabled;
+        $('#cfx-form-chance-row').toggle(random);
+        $('#cfx-forced-form-row').toggle(forced);
+    };
+    $('#cfx-forms').on('change', function () { s.formsEnabled = this.checked; refreshFormRows(); save(); });
+    $('#cfx-form-mode').on('change', function () { s.formMode = this.value; refreshFormRows(); save(); });
+    $('#cfx-form-chance').on('input', function () {
+        s.formChance = +this.value || 0; $('#cfx-form-chance-val').text(this.value); save();
+    });
+    $('#cfx-forced-form').on('change', function () { s.forcedForm = this.value; save(); });
+    refreshFormRows();
 }
 
 // Обработать все сообщения в чате (загрузка/смена чата).

@@ -114,13 +114,17 @@
     return lines.join('\n');
   }
 
+  // Нормализация списка настроений (алиас → канон).
+  function normMoods(arr) {
+    return (arr || []).map(function (m) {
+      return ChaosFX.registry.mood(m) || m;
+    }).filter(Boolean);
+  }
+
   // ── Публичный API ─────────────────────────────────────────────────────────
   function rotate(settings) {
     var opts = Object.assign({}, DEFAULTS, settings || {});
-    var moods = (opts.moods || []).map(function (m) {
-      var c = ChaosFX.registry.mood(m);
-      return c || m;
-    }).filter(Boolean);
+    var moods = normMoods(opts.moods);
 
     var effects = sample(
       candidates(ChaosFX.EFFECTS, moods, opts.intensity, true),
@@ -140,6 +144,18 @@
     };
   }
 
+  // Выбрать одну форму, взвешенно по weight, с фильтром по накалу и настроениям.
+  // Возвращает запись формы или null (если пул пуст).
+  function pickForm(settings) {
+    var opts = settings || {};
+    var moods = normMoods(opts.moods);
+    var ceiling = opts.intensity != null ? opts.intensity : 10;
+    var pool = candidates(ChaosFX.FORMS, moods, ceiling, true);
+    var picked = sample(pool, 1, opts.rng || Math.random);
+    return picked[0] || null;
+  }
+
   ChaosFX.rotate = rotate;
-  ChaosFX.rotation = { candidates: candidates, sample: sample, buildPrompt: buildPrompt };
+  ChaosFX.pickForm = pickForm;
+  ChaosFX.rotation = { candidates: candidates, sample: sample, buildPrompt: buildPrompt, normMoods: normMoods };
 })(typeof window !== 'undefined' ? window : this);

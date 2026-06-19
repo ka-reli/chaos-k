@@ -407,6 +407,7 @@
   border-color: var(--SmartThemeQuoteColor, #5a6); color: #fff;
 }
 .chaos-fx-settings .cfx-hint { opacity: 0.6; display: block; margin-top: 4px; }
+.chaos-fx-settings .cfx-sep { border: none; border-top: 1px solid var(--SmartThemeBorderColor, #444); margin: 12px 0; opacity: 0.5; }
 .cfx-readable-btn { cursor: pointer; }
 
 /* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
