@@ -59,7 +59,10 @@ function settings() {
         defaultSettings,
         extension_settings[MODULE] || {},
     );
-    return extension_settings[MODULE];
+    const o = extension_settings[MODULE];
+    // Гарантируем валидную форму по умолчанию (иначе forced-режим даёт null).
+    if (!o.forcedForm && CFX.FORMS && CFX.FORMS.length) o.forcedForm = CFX.FORMS[0].id;
+    return o;
 }
 
 // ── Тема: авто по яркости фона ST, либо ручной выбор ─────────────────────────
@@ -186,28 +189,37 @@ function startObserver() {
 }
 
 // ── Подсказка модели: ротация палитры перед генерацией ───────────────────────
+// Эффекты и формы независимы: блок инжектится, если включён хотя бы один слой.
 function injectPalette() {
     const s = settings();
-    if (!s.enabled || !s.effects) {
+    if (!s.enabled) {
+        setExtensionPrompt(PROMPT_KEY, '', extension_prompt_types.IN_CHAT, 1);
+        return;
+    }
+    const formId = chooseForm(s);
+    const wantEffects = !!s.effects;
+    if (!wantEffects && !formId) {
         setExtensionPrompt(PROMPT_KEY, '', extension_prompt_types.IN_CHAT, 1);
         return;
     }
     const res = CFX.rotate({
         intensity: s.intensity,
         moods: s.moods,
-        effectsCount: s.effectsCount,
-        colorsCount: s.colorsCount,
-        form: chooseForm(s),
+        effectsCount: wantEffects ? s.effectsCount : 0,
+        colorsCount: wantEffects ? s.colorsCount : 0,
+        form: formId,
     });
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
     setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
-    console.debug('[Chaos-FX] palette injected:\n' + res.prompt);
+    console.debug('[Chaos-FX] palette injected (form=' + (formId || 'none') + '):\n' + res.prompt);
 }
 
 // Решить, какая форма (если есть) уйдёт модели в этот ход.
 function chooseForm(s) {
     if (!s.formsEnabled) return null;
-    if (s.formMode === 'forced') return s.forcedForm || null;
+    if (s.formMode === 'forced') {
+        return s.forcedForm || (CFX.FORMS[0] && CFX.FORMS[0].id) || null;
+    }
     if (s.formMode === 'random') {
         if (Math.random() * 100 >= s.formChance) return null;
         const f = CFX.pickForm({ moods: s.moods, intensity: s.intensity });
@@ -318,7 +330,9 @@ function buildSettingsPanel() {
 
 function wireSettings() {
     const s = settings();
-    const save = () => saveSettingsDebounced();
+    // Сохраняем И сразу обновляем инъекцию палитры/формы — чтобы выбор
+    // применялся к следующей генерации без задержки на один ход.
+    const save = () => { saveSettingsDebounced(); injectPalette(); };
 
     $('#cfx-enabled').on('change', function () { s.enabled = this.checked; save(); });
     $('#cfx-effects').on('change', function () { s.effects = this.checked; save(); });
