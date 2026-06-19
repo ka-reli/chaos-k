@@ -85,32 +85,38 @@
   // ── Сборка блока-подсказки для модели (RU — это контекст, не UI) ───────────
   function buildPrompt(effects, colors, form) {
     var lines = [];
-    lines.push('〈Chaos-FX〉 В СВОЁМ ОТВЕТЕ расставляй эти метки прямо в тексте — оборачивай отдельные слова и короткие фразы по смыслу (акценты, а не весь текст). Метки пиши как есть, не объясняй их.');
 
-    if (effects.length) {
-      var fx = effects.map(function (e) {
-        return '[fx:' + e.id + '] ' + e.desc;
-      }).join(' · ');
-      lines.push('Эффекты — [fx:имя]слово[/fx]: ' + fx);
-    }
-
-    if (colors.length) {
-      var cl = colors.map(function (c) {
-        var ru = (c.aliases && c.aliases[0]) ? ' ' + c.aliases[0] : '';
-        return '[' + c.id + ']' + ru;
-      }).join(' · ');
-      lines.push('Цвета — [имя]слово[/имя]: ' + cl);
-    }
-
+    // Форма — самое важное, ставим наверх и заметно.
     if (form && form.instruction) {
-      lines.push('Форма ответа: ' + form.instruction);
+      lines.push('〈Chaos-FX〉 ФОРМА ВСЕГО ОТВЕТА — ' + form.instruction);
     }
 
-    lines.push('Вкладывать можно: [fx:ember][blood]пламя[/blood][/fx].');
-    var ex1 = effects[0] ? effects[0].id : 'glow';
-    var ex2 = effects[1] ? effects[1].id : 'ember';
-    var exC = colors[0] ? colors[0].id : 'blood';
-    lines.push('Пример: Она [fx:' + ex1 + ']замерла[/fx], когда [fx:' + ex2 + '][' + exC + ']тьма[/' + exC + '][/fx] коснулась её.');
+    // Инлайн-метки (если слой эффектов включён).
+    if (effects.length || colors.length) {
+      lines.push('〈Chaos-FX〉 Расставляй метки прямо в тексте — оборачивай отдельные слова и короткие фразы по смыслу (акценты, а не весь текст). Метки пиши как есть, не объясняй их.');
+
+      if (effects.length) {
+        var fx = effects.map(function (e) {
+          return '[fx:' + e.id + '] ' + e.desc;
+        }).join(' · ');
+        lines.push('Эффекты — [fx:имя]слово[/fx]: ' + fx);
+      }
+
+      if (colors.length) {
+        var cl = colors.map(function (c) {
+          var ru = (c.aliases && c.aliases[0]) ? ' ' + c.aliases[0] : '';
+          return '[' + c.id + ']' + ru;
+        }).join(' · ');
+        lines.push('Цвета — [имя]слово[/имя]: ' + cl);
+      }
+
+      lines.push('Вкладывать можно: [fx:ember][blood]пламя[/blood][/fx].');
+      var ex1 = effects[0] ? effects[0].id : 'glow';
+      var ex2 = effects[1] ? effects[1].id : 'ember';
+      var exC = colors[0] ? colors[0].id : 'blood';
+      lines.push('Пример: Она [fx:' + ex1 + ']замерла[/fx], когда [fx:' + ex2 + '][' + exC + ']тьма[/' + exC + '][/fx] коснулась её.');
+    }
+
     return lines.join('\n');
   }
 
