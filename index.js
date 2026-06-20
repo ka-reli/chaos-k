@@ -33,7 +33,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.4.0'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.4.1'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -54,12 +54,14 @@ const defaultSettings = {
 };
 
 function settings() {
-    extension_settings[MODULE] = Object.assign(
-        {},
-        defaultSettings,
-        extension_settings[MODULE] || {},
-    );
+    // ВАЖНО: дополняем существующий объект НА МЕСТЕ, сохраняя ссылку.
+    // Если пересоздавать объект каждый раз, панель настроек держит старую
+    // ссылку и её изменения (Form mode и т.п.) теряются.
+    if (!extension_settings[MODULE]) extension_settings[MODULE] = {};
     const o = extension_settings[MODULE];
+    for (const k in defaultSettings) {
+        if (!(k in o)) o[k] = defaultSettings[k];
+    }
     // Гарантируем валидную форму по умолчанию (иначе forced-режим даёт null).
     if (!o.forcedForm && CFX.FORMS && CFX.FORMS.length) o.forcedForm = CFX.FORMS[0].id;
     return o;
@@ -211,7 +213,7 @@ function injectPalette() {
     });
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
     setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
-    console.log('[Chaos-FX] form this turn:', formId || 'none', '| effects:', wantEffects ? res.effects.length : 0);
+    console.log('[Chaos-FX] form this turn:', formId || 'none', '| mode:', s.formMode, '| effects:', wantEffects ? res.effects.length : 0);
     console.debug('[Chaos-FX] palette prompt:\n' + res.prompt);
 }
 
