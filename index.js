@@ -33,6 +33,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
+const VERSION = '0.4.0'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -210,7 +211,8 @@ function injectPalette() {
     });
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
     setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
-    console.debug('[Chaos-FX] palette injected (form=' + (formId || 'none') + '):\n' + res.prompt);
+    console.log('[Chaos-FX] form this turn:', formId || 'none', '| effects:', wantEffects ? res.effects.length : 0);
+    console.debug('[Chaos-FX] palette prompt:\n' + res.prompt);
 }
 
 // Решить, какая форма (если есть) уйдёт модели в этот ход.
@@ -401,5 +403,5 @@ jQuery(() => {
     eventSource.on(event_types.CHAT_CHANGED, () => setTimeout(processAll, 100));
     setTimeout(processAll, 300);
 
-    console.log('[Chaos-FX] loaded');
+    console.log('[Chaos-FX] loaded (v' + VERSION + ')');
 });
