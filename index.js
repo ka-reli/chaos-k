@@ -33,7 +33,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.5.0'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.5.1'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {

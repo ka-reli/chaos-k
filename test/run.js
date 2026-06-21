@@ -84,10 +84,10 @@ check('escape:false сохраняет html', /<em>курсив<\/em>/.test(r15)
 var r16 = CFX.strip('[fx:ember][blood]жар[/blood][/fx] и [ominous]тень[/ominous]', { escape: false });
 check('strip снимает метки', r16 === 'жар и тень', JSON.stringify(r16));
 
-// 17. Форма-фрагмент [form:NAME] → блочный div с ярлыком.
+// 17. Форма-фрагмент [form:NAME] → блочный div.
 var r17 = CFX.parse('[form:dossier]секретные данные[/form]', { escape: false });
 check('форма → блок cfx-form', /<div class="cfx-form" data-form="dossier">/.test(r17) && /секретные данные/.test(r17), r17);
-check('форма → ярлык-подпись', /cfx-form-label/.test(r17), r17);
+check('форма → нет сырых меток', r17.indexOf('[form') === -1 && r17.indexOf('[/form]') === -1, r17);
 
 // 18. Неизвестная форма выкусывается без следа.
 var r18 = CFX.parse('до [form:неведомое]x[/form] после', { escape: false });
