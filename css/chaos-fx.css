@@ -392,19 +392,39 @@
 .cfx-root .cfx-form {
   display: block;
   position: relative;
-  margin: 0.7em 0;
-  padding: 0.5em 0.9em 0.5em 1.1em;
-  border-left: 2px dashed var(--SmartThemeQuoteColor, #8a7fff);
+  margin: 0.8em 0;
+  padding: 0.6em 1em;
   background: rgba(127, 127, 127, 0.06);
-  border-radius: 0 5px 5px 0;
+  /* статичное состояние (и для reduced-motion) — уже с искажёнными краями */
+  border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px;
+  box-shadow: -1px 0 0 rgba(255, 0, 200, 0.2), 1px 0 0 rgba(0, 230, 255, 0.2);
+  animation: cfx-form-warp 7s ease-in-out infinite;
+}
+/* морфящиеся «блобовые» края + хроматическая аберрация + лёгкий hue-сдвиг */
+@keyframes cfx-form-warp {
+  0%, 100% {
+    border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px;
+    box-shadow: -2px 0 0 rgba(255, 0, 200, 0.25), 2px 0 0 rgba(0, 230, 255, 0.25), inset 0 0 12px rgba(160, 120, 255, 0.07);
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    border-radius: 16px 6px 18px 5px / 5px 18px 6px 16px;
+    box-shadow: 3px 0 0 rgba(255, 0, 200, 0.35), -3px 0 0 rgba(0, 230, 255, 0.35), inset 0 0 18px rgba(160, 120, 255, 0.13);
+    filter: hue-rotate(22deg);
+  }
 }
 .cfx-root .cfx-form::before {
   content: "✦";
   position: absolute;
   top: 2px;
-  right: 6px;
+  right: 7px;
   font-size: 0.7em;
   opacity: 0.4;
+  animation: cfx-form-mark 7s ease-in-out infinite;
+}
+@keyframes cfx-form-mark {
+  0%, 100% { opacity: 0.3; transform: rotate(0deg); }
+  50%      { opacity: 0.6; transform: rotate(45deg); }
 }
 
 /* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */
@@ -443,5 +463,7 @@
    страховка на уровне CSS для СИСТЕМНОЙ настройки: глушим все анимации.
    Каждый эффект спроектирован так, что в покое текст остаётся читаемым. */
 @media (prefers-reduced-motion: reduce) {
-  .cfx-root [data-fx] { animation: none !important; }
+  .cfx-root [data-fx],
+  .cfx-root .cfx-form,
+  .cfx-root .cfx-form::before { animation: none !important; }
 }
