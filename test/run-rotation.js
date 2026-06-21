@@ -80,9 +80,9 @@ var dossier = CFX.registry.form('dossier');
 var dWhole = CFX.formDirective(dossier, 'whole', true);
 check('directive whole → весь ответ', /ФОРМА ВСЕГО ОТВЕТА/.test(dWhole), dWhole);
 var dFrag = CFX.formDirective(dossier, 'fragment', true);
-check('directive fragment → [form:dossier]', /\[form:dossier\]/.test(dFrag) && /НЕ весь ответ/.test(dFrag), dFrag);
+check('directive fragment → [form:dossier]', /\[form:dossier\]/.test(dFrag) && /приём нарратива/i.test(dFrag), dFrag);
 var dAuto = CFX.formDirective(dossier, 'fragment', false);
-check('directive auto → «когда уместно»', /когда по сцене это уместно/i.test(dAuto), dAuto);
+check('directive auto → психодел-триггер', /психодел|искажение реальности/i.test(dAuto), dAuto);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

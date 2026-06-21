@@ -386,24 +386,25 @@
   50%      { transform: rotate(1deg) skewX(3deg); }
 }
 
-/* ── Форма-фрагмент: «вставной документ» с тонким акцентом ────────────────── */
-/* [form:имя]…[/form] → скромный блок: отступ, боковая полоса, лёгкая подложка
-   и маленький ярлык-подпись, чтобы читалось как намеренная вставка. */
+/* ── Форма-фрагмент: отрезок повествования, сорвавшийся в сюр-форму ────────── */
+/* [form:имя]…[/form] → скромный «сдвиг» прозы: отступ, боковая полоса, лёгкая
+   подложка + нейтральный маркер-глиф (намеренный приём, не «документ»). */
 .cfx-root .cfx-form {
   display: block;
+  position: relative;
   margin: 0.7em 0;
-  padding: 0.5em 0.9em;
-  border-left: 3px solid var(--SmartThemeQuoteColor, #8a7fff);
-  background: rgba(127, 127, 127, 0.07);
+  padding: 0.5em 0.9em 0.5em 1.1em;
+  border-left: 2px dashed var(--SmartThemeQuoteColor, #8a7fff);
+  background: rgba(127, 127, 127, 0.06);
   border-radius: 0 5px 5px 0;
 }
-.cfx-root .cfx-form-label {
-  display: block;
-  font-size: 0.68em;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.55;
-  margin-bottom: 0.35em;
+.cfx-root .cfx-form::before {
+  content: "✦";
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 0.7em;
+  opacity: 0.4;
 }
 
 /* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */

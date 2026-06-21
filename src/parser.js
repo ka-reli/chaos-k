@@ -216,16 +216,14 @@
       return '<span class="clr-' + node.rec.id + ' fx-colored">' + inner + '</span>';
     }
 
-    // Форма-фрагмент — блочная «вставка» с тонким акцентом и ярлыком.
+    // Форма-фрагмент — отрезок повествования, сорвавшийся в сюрреалистическую
+    // форму. Тонкий нейтральный акцент (не «документ»), маркер — через CSS.
     if (node.kind === 'form') {
       if (ctx.depth >= ctx.maxDepth) return renderChildren(node, ctx);
       ctx.depth++;
       var fbody = renderChildren(node, ctx);
       ctx.depth--;
-      var label = node.rec.desc || node.rec.id;
-      return '<div class="cfx-form" data-form="' + node.rec.id + '">' +
-        '<span class="cfx-form-label">' + escapeHtml(label) + '</span>' +
-        fbody + '</div>';
+      return '<div class="cfx-form" data-form="' + node.rec.id + '">' + fbody + '</div>';
     }
 
     // Настроение → конкретный эффект из пула, дальше как эффект.
