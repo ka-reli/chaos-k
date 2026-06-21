@@ -33,7 +33,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.4.1'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.5.0'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -47,10 +47,11 @@ const defaultSettings = {
     reducedMotion: false, // ручной reduced-motion
     theme: 'auto',        // auto | dark | light
     stripFromContext: false, // вырезать метки из истории перед отправкой
-    // Макро-формы (весь ответ как рецепт/пьеса/досье и т.д.)
-    formMode: 'off',      // off | random | forced  (единственный тумблер слоя)
-    forcedForm: '',       // id формы при formMode === 'forced'
-    formChance: 25,       // шанс формы на ход (%) при formMode === 'random'
+    // Макро-формы (рецепт/пьеса/досье и т.д.)
+    formScope: 'fragment', // whole (весь ответ) | fragment (акцентный кусок)
+    formMode: 'off',       // off | auto (модель решает) | random | forced
+    forcedForm: '',        // id формы при formMode === 'forced'
+    formChance: 25,        // шанс формы на ход (%) при formMode === 'random'
 };
 
 function settings() {
@@ -199,8 +200,13 @@ function injectPalette() {
         return;
     }
     const formId = chooseForm(s);
+    const formRec = formId ? CFX.registry.form(formId) : null;
+    // forced/random — обязательная вставка; auto — «когда уместно».
+    const mandatory = s.formMode === 'forced' || s.formMode === 'random';
+    const directive = formRec ? CFX.formDirective(formRec, s.formScope, mandatory) : '';
+
     const wantEffects = !!s.effects;
-    if (!wantEffects && !formId) {
+    if (!wantEffects && !directive) {
         setExtensionPrompt(PROMPT_KEY, '', extension_prompt_types.IN_CHAT, 1);
         return;
     }
@@ -209,19 +215,25 @@ function injectPalette() {
         moods: s.moods,
         effectsCount: wantEffects ? s.effectsCount : 0,
         colorsCount: wantEffects ? s.colorsCount : 0,
-        form: formId,
+        form: null, // директиву формы строим отдельно (scope-aware)
     });
+    let prompt = res.prompt;
+    if (directive) prompt = prompt ? directive + '\n\n' + prompt : directive;
+
     // IN_CHAT, глубина 1 (перед последним сообщением), роль system (0).
-    setExtensionPrompt(PROMPT_KEY, res.prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
-    console.log('[Chaos-FX] form this turn:', formId || 'none', '| mode:', s.formMode, '| effects:', wantEffects ? res.effects.length : 0);
-    console.debug('[Chaos-FX] palette prompt:\n' + res.prompt);
+    setExtensionPrompt(PROMPT_KEY, prompt, extension_prompt_types.IN_CHAT, 1, false, 0);
+    console.log('[Chaos-FX] form:', formId || 'none', '| scope:', s.formScope, '| mode:', s.formMode, '| effects:', wantEffects ? res.effects.length : 0);
+    console.debug('[Chaos-FX] palette prompt:\n' + prompt);
 }
 
-// Решить, какая форма (если есть) уйдёт модели в этот ход.
-// Всем рулит formMode: 'off' — выключено, без отдельного master-тумблера.
+// Решить, какая форма (если есть) уйдёт модели в этот ход. formMode рулит всем.
 function chooseForm(s) {
     if (s.formMode === 'forced') {
         return s.forcedForm || (CFX.FORMS[0] && CFX.FORMS[0].id) || null;
+    }
+    if (s.formMode === 'auto') {
+        const f = CFX.pickForm({ moods: s.moods, intensity: s.intensity });
+        return f ? f.id : null;
     }
     if (s.formMode === 'random') {
         if (Math.random() * 100 >= s.formChance) return null;
@@ -308,10 +320,17 @@ function buildSettingsPanel() {
           <small class="cfx-hint">Empty = all moods. The director (coming later) will set these automatically.</small>
 
           <hr class="cfx-sep">
-          <div><b>Macro-forms</b> — reshape the whole reply</div>
+          <div><b>Macro-forms</b> — recipe / play / dossier… as a form</div>
+          <label>Form scope
+            <select id="cfx-form-scope" class="text_pole">
+              <option value="fragment" ${s.formScope === 'fragment' ? 'selected' : ''}>Accent fragment (part of reply)</option>
+              <option value="whole" ${s.formScope === 'whole' ? 'selected' : ''}>Whole reply</option>
+            </select>
+          </label>
           <label>Form mode
             <select id="cfx-form-mode" class="text_pole">
               <option value="off" ${s.formMode === 'off' ? 'selected' : ''}>Off</option>
+              <option value="auto" ${s.formMode === 'auto' ? 'selected' : ''}>Auto (model decides when)</option>
               <option value="random" ${s.formMode === 'random' ? 'selected' : ''}>Random (by chance)</option>
               <option value="forced" ${s.formMode === 'forced' ? 'selected' : ''}>Forced (always)</option>
             </select>
@@ -322,7 +341,7 @@ function buildSettingsPanel() {
           <label id="cfx-forced-form-row">Forced form
             <select id="cfx-forced-form" class="text_pole">${formOptions}</select>
           </label>
-          <small class="cfx-hint">Forms reshape the whole reply (recipe, play, dossier…). The model formats text per the form's instruction.</small>
+          <small class="cfx-hint">Fragment = only a fitting piece (a letter, a file, a note) is wrapped as a form and gently framed. Whole = the entire reply is formatted.</small>
         </div>
       </div>
     </div>`;
@@ -362,6 +381,7 @@ function wireSettings() {
         $('#cfx-form-chance-row').toggle(s.formMode === 'random');
         $('#cfx-forced-form-row').toggle(s.formMode === 'forced');
     };
+    $('#cfx-form-scope').on('change', function () { s.formScope = this.value; save(); });
     $('#cfx-form-mode').on('change', function () { s.formMode = this.value; refreshFormRows(); save(); });
     $('#cfx-form-chance').on('input', function () {
         s.formChance = +this.value || 0; $('#cfx-form-chance-val').text(this.value); save();

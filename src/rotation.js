@@ -82,13 +82,32 @@
     return picked;
   }
 
+  // Директива формы для модели. scope: 'whole' (весь ответ) | 'fragment'
+  // (только акцентный кусок). mandatory: обязательно или «когда уместно».
+  function formDirective(formRec, scope, mandatory) {
+    if (!formRec || !formRec.instruction) return '';
+    if (scope === 'fragment') {
+      var lead = mandatory
+        ? 'Вставь в ответ ОДИН фрагмент-форму'
+        : 'Когда по сцене это уместно, вставь ОДИН фрагмент-форму';
+      return '〈Chaos-FX〉 ' + lead + ' — оберни подходящий кусок (найденный документ, ' +
+        'письмо, записку, реплику и т.п.) в [form:' + formRec.id + ']…[/form]. ' +
+        'НЕ весь ответ, только эту вставку; остальное повествование — как обычно. ' +
+        'Оформи вставку так: ' + formRec.instruction;
+    }
+    var leadW = mandatory
+      ? 'ФОРМА ВСЕГО ОТВЕТА — '
+      : 'Если сцена целиком ложится на эту форму, оформи весь ответ так: ';
+    return '〈Chaos-FX〉 ' + leadW + formRec.instruction;
+  }
+
   // ── Сборка блока-подсказки для модели (RU — это контекст, не UI) ───────────
-  function buildPrompt(effects, colors, form) {
+  function buildPrompt(effects, colors, form, scope) {
     var lines = [];
 
     // Форма — самое важное, ставим наверх и заметно.
     if (form && form.instruction) {
-      lines.push('〈Chaos-FX〉 ФОРМА ВСЕГО ОТВЕТА — ' + form.instruction);
+      lines.push(formDirective(form, scope || 'whole', true));
     }
 
     // Инлайн-метки (если слой эффектов включён).
@@ -146,7 +165,7 @@
       effects: effects,
       colors: colors,
       form: form,
-      prompt: buildPrompt(effects, colors, form)
+      prompt: buildPrompt(effects, colors, form, opts.formScope)
     };
   }
 
@@ -163,5 +182,6 @@
 
   ChaosFX.rotate = rotate;
   ChaosFX.pickForm = pickForm;
+  ChaosFX.formDirective = formDirective;
   ChaosFX.rotation = { candidates: candidates, sample: sample, buildPrompt: buildPrompt, normMoods: normMoods };
 })(typeof window !== 'undefined' ? window : this);

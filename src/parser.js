@@ -84,6 +84,13 @@
       return { type: 'open', kind: 'fx', rec: fx, raw: raw, drop: !fx };
     }
 
+    // Форма-фрагмент: [form:NAME] — блочная вставка (письмо/досье/записка…).
+    var formMatch = /^form\s*:\s*(.+)$/i.exec(inner);
+    if (formMatch) {
+      var frm = reg.form(formMatch[1]);
+      return { type: 'open', kind: 'form', rec: frm, raw: raw, drop: !frm };
+    }
+
     // Голое [имя]: настроение? цвет? — иначе это НЕ метка (обычный текст).
     var mood = reg.mood(inner);
     if (mood) return { type: 'open', kind: 'mood', name: mood, raw: raw };
@@ -143,8 +150,12 @@
 
   function matchesClose(node, name) {
     if (name === 'fx') return node.kind === 'fx';
+    if (name === 'form') return node.kind === 'form';
     if (node.kind === 'fx' && node.rec) {
       return reg.effect(name) === node.rec;
+    }
+    if (node.kind === 'form' && node.rec) {
+      return reg.form(name) === node.rec;
     }
     if (node.kind === 'color' && node.rec) {
       return reg.color(name) === node.rec;
@@ -203,6 +214,18 @@
       var inner = renderChildren(node, ctx);
       ctx.depth--;
       return '<span class="clr-' + node.rec.id + ' fx-colored">' + inner + '</span>';
+    }
+
+    // Форма-фрагмент — блочная «вставка» с тонким акцентом и ярлыком.
+    if (node.kind === 'form') {
+      if (ctx.depth >= ctx.maxDepth) return renderChildren(node, ctx);
+      ctx.depth++;
+      var fbody = renderChildren(node, ctx);
+      ctx.depth--;
+      var label = node.rec.desc || node.rec.id;
+      return '<div class="cfx-form" data-form="' + node.rec.id + '">' +
+        '<span class="cfx-form-label">' + escapeHtml(label) + '</span>' +
+        fbody + '</div>';
     }
 
     // Настроение → конкретный эффект из пула, дальше как эффект.
