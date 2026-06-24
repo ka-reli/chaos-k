@@ -33,7 +33,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.5.2'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.6.0'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -52,6 +52,7 @@ const defaultSettings = {
     formMode: 'off',       // off | auto (модель решает) | random | forced
     forcedForm: '',        // id формы при formMode === 'forced'
     formChance: 25,        // шанс формы на ход (%) при formMode === 'random'
+    formEdge: 'liquid',    // стиль краёв формы: liquid|ripple|glitch|neon|prism
 };
 
 function settings() {
@@ -91,6 +92,21 @@ function applyTheme() {
     document.body.classList.toggle('cfx-theme-light', !dark);
 }
 
+// SVG-фильтр турбулентности для стиля краёв «ripple» (живой колышущийся контур).
+function injectRippleFilter() {
+    if (document.getElementById('cfx-ripple-svg')) return;
+    const svg = `<svg id="cfx-ripple-svg" width="0" height="0" style="position:absolute">
+      <filter id="cfx-ripple">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" result="n">
+          <animate attributeName="baseFrequency" dur="16s"
+            values="0.012 0.02;0.02 0.012;0.012 0.02" repeatCount="indefinite"/>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="9"/>
+      </filter>
+    </svg>`;
+    document.body.insertAdjacentHTML('beforeend', svg);
+}
+
 // ── Рендер: развернуть метки в DOM сообщения ─────────────────────────────────
 // Флаг: мы сами сейчас пишем в DOM — наблюдатель должен игнорировать эти мутации.
 let cfxApplying = false;
@@ -108,6 +124,7 @@ function expandTags(textEl) {
         budget: s.budget,
         reducedMotion: s.reducedMotion,
         theme: resolveTheme(),
+        formEdge: s.formEdge,
     });
     if (html === src) return; // распознанных меток не нашлось — не дёргаем DOM
 
@@ -341,7 +358,16 @@ function buildSettingsPanel() {
           <label id="cfx-forced-form-row">Forced form
             <select id="cfx-forced-form" class="text_pole">${formOptions}</select>
           </label>
-          <small class="cfx-hint">Fragment = only a fitting piece (a letter, a file, a note) is wrapped as a form and gently framed. Whole = the entire reply is formatted.</small>
+          <label>Form edge style
+            <select id="cfx-form-edge" class="text_pole">
+              <option value="liquid" ${s.formEdge === 'liquid' ? 'selected' : ''}>Liquid (morphing blob)</option>
+              <option value="ripple" ${s.formEdge === 'ripple' ? 'selected' : ''}>Ripple (wavy SVG)</option>
+              <option value="glitch" ${s.formEdge === 'glitch' ? 'selected' : ''}>Glitch (RGB tear)</option>
+              <option value="neon" ${s.formEdge === 'neon' ? 'selected' : ''}>Neon (breathing halo)</option>
+              <option value="prism" ${s.formEdge === 'prism' ? 'selected' : ''}>Prism (rainbow border)</option>
+            </select>
+          </label>
+          <small class="cfx-hint">Fragment = a surreal stretch of the narration warps into a form (only that part), gently distorted at the edges. Whole = the entire reply is formatted.</small>
         </div>
       </div>
     </div>`;
@@ -382,6 +408,13 @@ function wireSettings() {
         $('#cfx-forced-form-row').toggle(s.formMode === 'forced');
     };
     $('#cfx-form-scope').on('change', function () { s.formScope = this.value; save(); });
+    $('#cfx-form-edge').on('change', function () {
+        s.formEdge = this.value; save();
+        // Мгновенно перекрасить уже показанные блоки форм.
+        document.querySelectorAll('#chat .cfx-form').forEach((el) => {
+            el.className = 'cfx-form cfx-edge-' + s.formEdge;
+        });
+    });
     $('#cfx-form-mode').on('change', function () { s.formMode = this.value; refreshFormRows(); save(); });
     $('#cfx-form-chance').on('input', function () {
         s.formChance = +this.value || 0; $('#cfx-form-chance-val').text(this.value); save();
@@ -399,6 +432,7 @@ function processAll() {
 jQuery(() => {
     settings();
     applyTheme();
+    injectRippleFilter();
     buildSettingsPanel();
     startObserver();
 

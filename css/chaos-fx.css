@@ -387,31 +387,15 @@
 }
 
 /* ── Форма-фрагмент: отрезок повествования, сорвавшийся в сюр-форму ────────── */
-/* [form:имя]…[/form] → скромный «сдвиг» прозы: отступ, боковая полоса, лёгкая
-   подложка + нейтральный маркер-глиф (намеренный приём, не «документ»). */
+/* [form:имя]…[/form] → блок с выбираемым стилем краёв (cfx-edge-*). База —
+   подложка + нейтральный маркер; край задаёт отдельный класс. */
 .cfx-root .cfx-form {
   display: block;
   position: relative;
   margin: 0.8em 0;
   padding: 0.6em 1em;
   background: rgba(127, 127, 127, 0.06);
-  /* статичное состояние (и для reduced-motion) — уже с искажёнными краями */
-  border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px;
-  box-shadow: -1px 0 0 rgba(255, 0, 200, 0.2), 1px 0 0 rgba(0, 230, 255, 0.2);
-  animation: cfx-form-warp 7s ease-in-out infinite;
-}
-/* морфящиеся «блобовые» края + хроматическая аберрация + лёгкий hue-сдвиг */
-@keyframes cfx-form-warp {
-  0%, 100% {
-    border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px;
-    box-shadow: -2px 0 0 rgba(255, 0, 200, 0.25), 2px 0 0 rgba(0, 230, 255, 0.25), inset 0 0 12px rgba(160, 120, 255, 0.07);
-    filter: hue-rotate(0deg);
-  }
-  50% {
-    border-radius: 16px 6px 18px 5px / 5px 18px 6px 16px;
-    box-shadow: 3px 0 0 rgba(255, 0, 200, 0.35), -3px 0 0 rgba(0, 230, 255, 0.35), inset 0 0 18px rgba(160, 120, 255, 0.13);
-    filter: hue-rotate(22deg);
-  }
+  border-radius: 8px;
 }
 .cfx-root .cfx-form::before {
   content: "✦";
@@ -420,12 +404,73 @@
   right: 7px;
   font-size: 0.7em;
   opacity: 0.4;
+  z-index: 1;
   animation: cfx-form-mark 7s ease-in-out infinite;
 }
 @keyframes cfx-form-mark {
   0%, 100% { opacity: 0.3; transform: rotate(0deg); }
   50%      { opacity: 0.6; transform: rotate(45deg); }
 }
+
+/* liquid — морфящиеся «блобовые» края + хроматика + hue-сдвиг. */
+.cfx-root .cfx-form.cfx-edge-liquid {
+  border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px;
+  box-shadow: -1px 0 0 rgba(255, 0, 200, 0.2), 1px 0 0 rgba(0, 230, 255, 0.2);
+  animation: cfx-edge-liquid 7s ease-in-out infinite;
+}
+@keyframes cfx-edge-liquid {
+  0%, 100% { border-radius: 6px 14px 8px 16px / 14px 6px 16px 8px; box-shadow: -2px 0 0 rgba(255, 0, 200, 0.25), 2px 0 0 rgba(0, 230, 255, 0.25), inset 0 0 12px rgba(160, 120, 255, 0.07); filter: hue-rotate(0deg); }
+  50%      { border-radius: 16px 6px 18px 5px / 5px 18px 6px 16px; box-shadow: 3px 0 0 rgba(255, 0, 200, 0.35), -3px 0 0 rgba(0, 230, 255, 0.35), inset 0 0 18px rgba(160, 120, 255, 0.13); filter: hue-rotate(22deg); }
+}
+
+/* ripple — SVG-рябь по контуру (живой колышущийся край). */
+.cfx-root .cfx-form.cfx-edge-ripple { border-radius: 8px; }
+.cfx-root .cfx-form.cfx-edge-ripple::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--SmartThemeQuoteColor, #8a7fff);
+  border-radius: 10px;
+  box-shadow: inset 0 0 14px rgba(160, 120, 255, 0.15);
+  filter: url(#cfx-ripple);
+  pointer-events: none;
+}
+
+/* glitch — RGB-разрыв и дёрганье краёв. */
+.cfx-root .cfx-form.cfx-edge-glitch {
+  border-radius: 3px;
+  animation: cfx-edge-glitch 0.9s steps(2, end) infinite;
+}
+@keyframes cfx-edge-glitch {
+  0%   { box-shadow: -3px 0 #f0f, 3px 0 #0ff; transform: translateX(0); }
+  25%  { box-shadow: 3px 0 #f0f, -3px 0 #0ff; transform: translateX(1px); }
+  50%  { box-shadow: -2px 0 #f0f, 2px 0 #0ff; transform: translateX(-1px); }
+  75%  { box-shadow: 2px 0 #f0f, -2px 0 #0ff; transform: translateX(1px); }
+  100% { box-shadow: -3px 0 #f0f, 3px 0 #0ff; transform: translateX(0); }
+}
+
+/* neon — дышащий разноцветный ореол, перелив по кругу. */
+.cfx-root .cfx-form.cfx-edge-neon {
+  border-radius: 10px;
+  animation: cfx-edge-neon 5s linear infinite;
+}
+@keyframes cfx-edge-neon {
+  0%   { box-shadow: 0 0 14px 1px hsla(300, 100%, 62%, 0.5); }
+  33%  { box-shadow: 0 0 18px 2px hsla(190, 100%, 60%, 0.55); }
+  66%  { box-shadow: 0 0 18px 2px hsla(60, 100%, 60%, 0.5); }
+  100% { box-shadow: 0 0 14px 1px hsla(300, 100%, 62%, 0.5); }
+}
+
+/* prism — вращающаяся радужная обводка. */
+.cfx-root .cfx-form.cfx-edge-prism {
+  border: 2px solid transparent;
+  border-radius: 9px;
+  background:
+    linear-gradient(rgba(127, 127, 127, 0.06), rgba(127, 127, 127, 0.06)) padding-box,
+    conic-gradient(from 0deg, #ff5cc8, #5bb8ff, #9dff3c, #ffc24d, #ff5cc8) border-box;
+  animation: cfx-edge-prism 6s linear infinite;
+}
+@keyframes cfx-edge-prism { to { filter: hue-rotate(360deg); } }
 
 /* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */
 /* Кнопка в строке сообщения вешает .cfx-readable на .mes_text — гасим всё
@@ -465,5 +510,7 @@
 @media (prefers-reduced-motion: reduce) {
   .cfx-root [data-fx],
   .cfx-root .cfx-form,
-  .cfx-root .cfx-form::before { animation: none !important; }
+  .cfx-root .cfx-form::before,
+  .cfx-root .cfx-form::after { animation: none !important; }
+  .cfx-root .cfx-form.cfx-edge-ripple::after { filter: none; }
 }

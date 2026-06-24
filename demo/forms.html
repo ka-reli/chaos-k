@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaos-FX — form edge styles</title>
+  <link rel="stylesheet" href="../css/chaos-fx.css" />
+  <style>
+    body { margin: 0; padding: 24px; font: 16px/1.7 -apple-system, Segoe UI, Roboto, sans-serif; background: #1b1d22; color: #d8dce2; }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 18px; }
+    .sub { color: #8b909a; font-size: 13px; margin-bottom: 18px; }
+    .controls { margin-bottom: 18px; }
+    button { background: #262a31; color: #cfd4db; border: 1px solid #353a43; border-radius: 6px; padding: 6px 11px; font-size: 13px; cursor: pointer; }
+    button:hover { background: #2f343d; }
+    .style-name { color: #8b909a; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 4px; }
+    #stage.bg-light { background: #ece8e0; color: #20242b; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <!-- SVG-фильтр для стиля ripple -->
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="cfx-ripple">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" result="n">
+        <animate attributeName="baseFrequency" dur="16s" values="0.012 0.02;0.02 0.012;0.012 0.02" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9"/>
+    </filter>
+  </svg>
+
+  <div class="wrap">
+    <h1>Chaos-FX — стили краёв формы</h1>
+    <p class="sub">Один и тот же фрагмент в пяти стилях. Выбери любимый — он задаётся настройкой <code>Form edge style</code> в ST.</p>
+    <div class="controls">
+      <button id="toggle-bg">переключить фон сцены</button>
+    </div>
+    <div id="stage" class="cfx-root"></div>
+  </div>
+
+  <script src="../data/registry.js"></script>
+  <script src="../src/parser.js"></script>
+  <script>
+    var EDGES = ['liquid', 'ripple', 'glitch', 'neon', 'prism'];
+    var SAMPLE = 'Стены дышали ровно, как обычно.\n\n[form:stream]а потом пол [fx:melt]потёк[/fx] и мысли рассыпались на буквы буквы буквы кто здесь свет [ultraviolet]фиолетовый[/ultraviolet] вкус неба секунда длиной в год[/form]\n\nОна моргнула, и комната снова стала комнатой.';
+
+    var stage = document.getElementById('stage');
+    function render() {
+      stage.innerHTML = EDGES.map(function (edge) {
+        var html = ChaosFX.parse(SAMPLE, { escape: true, formEdge: edge });
+        return '<div class="style-name">' + edge + '</div>' + html;
+      }).join('');
+    }
+    render();
+
+    var light = false;
+    document.getElementById('toggle-bg').addEventListener('click', function () {
+      light = !light;
+      stage.classList.toggle('cfx-theme-light', light);
+      stage.classList.toggle('bg-light', light);
+    });
+  </script>
+</body>
+</html>
