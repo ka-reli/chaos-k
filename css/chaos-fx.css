@@ -461,12 +461,14 @@
   100% { box-shadow: 0 0 14px 1px hsla(300, 100%, 62%, 0.5); }
 }
 
-/* prism — вращающаяся радужная обводка. */
+/* prism — вращающаяся радужная обводка; светлая подложка + тёмный текст
+   (иначе светлый текст сливается с яркой рамкой). */
 .cfx-root .cfx-form.cfx-edge-prism {
   border: 2px solid transparent;
   border-radius: 9px;
+  color: #16161e;
   background:
-    linear-gradient(rgba(127, 127, 127, 0.06), rgba(127, 127, 127, 0.06)) padding-box,
+    linear-gradient(rgba(244, 244, 248, 0.9), rgba(244, 244, 248, 0.9)) padding-box,
     conic-gradient(from 0deg, #ff5cc8, #5bb8ff, #9dff3c, #ffc24d, #ff5cc8) border-box;
   animation: cfx-edge-prism 6s linear infinite;
 }
