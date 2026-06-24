@@ -86,7 +86,7 @@ check('strip снимает метки', r16 === 'жар и тень', JSON.stri
 
 // 17. Форма-фрагмент [form:NAME] → блочный div.
 var r17 = CFX.parse('[form:dossier]секретные данные[/form]', { escape: false });
-check('форма → блок cfx-form', /<div class="cfx-form" data-form="dossier">/.test(r17) && /секретные данные/.test(r17), r17);
+check('форма → блок cfx-form', /<div class="cfx-form cfx-edge-\w+" data-form="dossier">/.test(r17) && /секретные данные/.test(r17), r17);
 check('форма → нет сырых меток', r17.indexOf('[form') === -1 && r17.indexOf('[/form]') === -1, r17);
 
 // 18. Неизвестная форма выкусывается без следа.

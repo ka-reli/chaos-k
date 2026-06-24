@@ -34,6 +34,7 @@
     reducedMotion: false, // a11y: применять поле reducedMotion
     theme: 'dark',        // для маркировки; реальные цвета — в CSS-переменных
     escape: true,         // экранировать текст? (false — для готового HTML сообщения ST)
+    formEdge: 'liquid',   // стиль краёв формы: liquid|ripple|glitch|neon|prism
     rng: Math.random      // инъекция для детерминированных тестов
   };
 
@@ -223,7 +224,8 @@
       ctx.depth++;
       var fbody = renderChildren(node, ctx);
       ctx.depth--;
-      return '<div class="cfx-form" data-form="' + node.rec.id + '">' + fbody + '</div>';
+      var edge = ctx.formEdge || 'liquid';
+      return '<div class="cfx-form cfx-edge-' + edge + '" data-form="' + node.rec.id + '">' + fbody + '</div>';
     }
 
     // Настроение → конкретный эффект из пула, дальше как эффект.
@@ -274,6 +276,7 @@
       budgetLeft: opts.budget,
       reducedMotion: !!opts.reducedMotion,
       escape: opts.escape !== false,
+      formEdge: opts.formEdge || 'liquid',
       rng: opts.rng
     };
     var tree = buildTree(tokenize(input));
