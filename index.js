@@ -19,6 +19,7 @@
 import './data/registry.js';
 import './src/parser.js';
 import './src/rotation.js';
+import './src/director.js';
 
 // API SillyTavern.
 import {
@@ -33,7 +34,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.6.1'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.7.0'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -53,6 +54,19 @@ const defaultSettings = {
     forcedForm: '',        // id формы при formMode === 'forced'
     formChance: 25,        // шанс формы на ход (%) при formMode === 'random'
     formEdge: 'liquid',    // стиль краёв формы: liquid|ripple|glitch|neon|prism
+    // Режиссёр (отдельная модель, оценивающая сцену)
+    directorMode: 'manual', // manual | auto
+    dirEndpoint: '',        // OpenAI-совместимый база-URL (…/v1)
+    dirApiKey: '',
+    dirModel: '',
+    dirTemperature: 0.6,    // 0–2; выше — безумнее вердикты
+    dirFrequency: 1,        // будить каждые N ходов юзера
+    dirCtxMessages: 5,      // сколько последних сообщений показывать
+    dirCtxChars: 600,       // обрезка каждого сообщения по символам
+    dirRerollOnSwipe: true, // пересматривать атмосферу при свайпе/регене
+    dirMaxStep: 2,          // сглаживание накала: макс. шаг за ход
+    dirFormCooldown: 4,     // формы не чаще, чем раз в K вердиктов
+    dirDebug: true,         // отладочная панель
 };
 
 function settings() {
@@ -208,6 +222,125 @@ function startObserver() {
     observer.observe(chat, { childList: true, subtree: true, characterData: true });
 }
 
+// ── Режиссёр: состояние, вызов, отладка ──────────────────────────────────────
+// Состояние атмосферы живёт в метаданных чата: у каждого чата своя атмосфера,
+// форки её наследуют (ST копирует метаданные вместе с веткой).
+let cfxFallbackState = null; // если метаданные недоступны — на время сессии
+
+function getChatState() {
+    try {
+        const ctx = getContext();
+        const meta = ctx.chatMetadata;
+        if (meta) {
+            if (!meta.chaos_fx) meta.chaos_fx = {};
+            return meta.chaos_fx;
+        }
+    } catch (e) { /* пусто */ }
+    if (!cfxFallbackState) cfxFallbackState = {};
+    return cfxFallbackState;
+}
+
+function saveChatState() {
+    try { getContext().saveMetadataDebounced?.(); } catch (e) { /* пусто */ }
+}
+
+// Форма, назначенная режиссёром на ТЕКУЩУЮ генерацию (одноразовая).
+let directorFormThisTurn = null;
+let directorBusy = false;
+
+// Сцена для режиссёра: последние N сообщений, очищенные от меток и обрезанные.
+function collectScene(chat, s) {
+    const msgs = (Array.isArray(chat) ? chat : [])
+        .filter((m) => !m.is_system && typeof m.mes === 'string');
+    return msgs.slice(-(s.dirCtxMessages || 5)).map((m) => ({
+        name: m.name || (m.is_user ? 'User' : 'Character'),
+        text: CFX.strip(m.mes, { escape: false }).slice(0, s.dirCtxChars || 600),
+    }));
+}
+
+// Блокирующий вызов режиссёра (по решению юзера: атмосфера всегда актуальна,
+// задержка ок; таймаут — идея на будущее). Ошибки не ломают генерацию.
+async function maybeRunDirector(chat, type) {
+    directorFormThisTurn = null;
+    const s = settings();
+    if (s.directorMode !== 'auto') return;
+    if (!s.dirEndpoint || !s.dirModel) return;
+    if (directorBusy) return; // параллельный вызов не запускаем
+
+    const st = getChatState();
+    const userCount = Array.isArray(chat) ? chat.filter((m) => m.is_user).length : 0;
+    const isSwipe = type === 'swipe' || type === 'regenerate';
+    // Частота считается по ходам юзера; свайпы ход не добавляют.
+    let due;
+    if (st.lastUserCount == null) due = true;
+    else if (userCount - st.lastUserCount >= (s.dirFrequency || 1)) due = true;
+    else due = isSwipe && s.dirRerollOnSwipe;
+    if (!due) return;
+
+    directorBusy = true;
+    try {
+        const res = await CFX.director.directScene(
+            { endpoint: s.dirEndpoint, apiKey: s.dirApiKey, model: s.dirModel, temperature: s.dirTemperature },
+            collectScene(chat, s),
+            { intensity: st.intensity, moods: st.moods || [], prevMoods: st.prevMoods || [], cooldown: st.cooldown || 0, formCooldown: st.formCooldown || 0 },
+            { maxStep: s.dirMaxStep, formCooldownTurns: s.dirFormCooldown },
+        );
+        st.lastUserCount = userCount;
+        if (res.ok) {
+            const ns = res.state;
+            Object.assign(st, {
+                intensity: ns.intensity, moods: ns.moods, prevMoods: ns.prevMoods,
+                cooldown: ns.cooldown, formCooldown: ns.formCooldown,
+                lastVerdict: res.verdict, lastNote: ns.note,
+                lastStatus: res.warnings.length ? 'ok (fixed: ' + res.warnings.join('; ') + ')' : 'ok',
+            });
+            directorFormThisTurn = ns.form || null;
+            // Применяем к живым настройкам. Ручные правки юзера в Auto —
+            // это override: живут до следующего пробуждения режиссёра.
+            s.intensity = ns.intensity;
+            s.moods = (ns.effectiveMoods || ns.moods).slice();
+            reflectStateInUI(s);
+            saveSettingsDebounced();
+            console.log('[Chaos-FX] director:', JSON.stringify(res.verdict), '→ smoothed', ns.intensity, '| form:', ns.form || 'none');
+        } else {
+            st.lastStatus = res.error;
+            console.warn('[Chaos-FX] director ' + res.error);
+        }
+        saveChatState();
+        updateDirectorDebug();
+    } finally {
+        directorBusy = false;
+    }
+}
+
+// Отразить состояние (вердикт режиссёра / кнопку «успокоить») в контролах.
+function reflectStateInUI(s) {
+    $('#cfx-intensity').val(s.intensity);
+    $('#cfx-intensity-val').text(s.intensity);
+    document.querySelectorAll('.cfx-mood-chip').forEach((ch) => {
+        ch.classList.toggle('cfx-on', s.moods.includes(ch.dataset.mood));
+    });
+}
+
+function updateDirectorDebug() {
+    const s = settings();
+    const box = document.getElementById('cfx-dir-debug-box');
+    if (!box) return;
+    box.style.display = s.dirDebug ? '' : 'none';
+    if (!s.dirDebug) return;
+    const st = getChatState();
+    const esc = CFX.escapeHtml;
+    if (!st.lastVerdict) { box.innerHTML = 'no verdict yet'; return; }
+    const v = st.lastVerdict;
+    box.innerHTML =
+        'intensity: ' + esc(String(v.intensity)) + ' → smoothed ' + esc(String(st.intensity)) +
+        (st.cooldown ? ' (cooldown ' + st.cooldown + ')' : '') + '<br>' +
+        'moods: ' + esc((v.moods || []).join(', ') || '—') + ' → active: ' + esc((s.moods || []).join(', ') || '—') + '<br>' +
+        'form: ' + esc(v.form || '—') + (st.formCooldown ? ' (form cooldown ' + st.formCooldown + ')' : '') + '<br>' +
+        'note: ' + esc(st.lastNote || '—') + '<br>' +
+        'status: ' + esc(st.lastStatus || '—');
+}
+
 // ── Подсказка модели: ротация палитры перед генерацией ───────────────────────
 // Эффекты и формы независимы: блок инжектится, если включён хотя бы один слой.
 function injectPalette() {
@@ -218,8 +351,8 @@ function injectPalette() {
     }
     const formId = chooseForm(s);
     const formRec = formId ? CFX.registry.form(formId) : null;
-    // forced/random — обязательная вставка; auto — «когда уместно».
-    const mandatory = s.formMode === 'forced' || s.formMode === 'random';
+    // forced/random/director — обязательная вставка; auto — «когда уместно».
+    const mandatory = s.formMode === 'forced' || s.formMode === 'random' || s.formMode === 'director';
     const directive = formRec ? CFX.formDirective(formRec, s.formScope, mandatory) : '';
 
     const wantEffects = !!s.effects;
@@ -245,6 +378,9 @@ function injectPalette() {
 
 // Решить, какая форма (если есть) уйдёт модели в этот ход. formMode рулит всем.
 function chooseForm(s) {
+    if (s.formMode === 'director') {
+        return directorFormThisTurn; // одноразовая форма из вердикта (или null)
+    }
     if (s.formMode === 'forced') {
         return s.forcedForm || (CFX.FORMS[0] && CFX.FORMS[0].id) || null;
     }
@@ -268,6 +404,12 @@ globalThis.chaosFxInterceptor = async function (chat, _contextSize, _abort, type
     console.debug('[Chaos-FX] interceptor fired, type=' + type);
     if (!s.enabled) return;
     if (type === 'quiet') return; // тихие фоновые генерации не трогаем
+
+    // Режиссёр — блокирующе (атмосфера актуальна в каждом сообщении).
+    // Impersonate (модель пишет за юзера) атмосферу не пересматривает.
+    if (type !== 'impersonate') {
+        await maybeRunDirector(chat, type);
+    }
 
     injectPalette();
 
@@ -332,9 +474,9 @@ function buildSettingsPanel() {
             <label>Colors offered <input type="number" id="cfx-clrn" class="text_pole" min="0" max="24" value="${s.colorsCount}"></label>
           </div>
 
-          <div>Active moods (manual mode)</div>
+          <div>Active moods</div>
           <div class="cfx-moods">${moodChips}</div>
-          <small class="cfx-hint">Empty = all moods. The director (coming later) will set these automatically.</small>
+          <small class="cfx-hint">Empty = all moods. In Director auto mode these show the director's verdict; manual tweaks act as overrides until its next wake.</small>
 
           <hr class="cfx-sep">
           <div><b>Macro-forms</b> — recipe / play / dossier… as a form</div>
@@ -347,6 +489,7 @@ function buildSettingsPanel() {
           <label>Form mode
             <select id="cfx-form-mode" class="text_pole">
               <option value="off" ${s.formMode === 'off' ? 'selected' : ''}>Off</option>
+              <option value="director" ${s.formMode === 'director' ? 'selected' : ''}>Director (verdict decides)</option>
               <option value="auto" ${s.formMode === 'auto' ? 'selected' : ''}>Auto (model decides when)</option>
               <option value="random" ${s.formMode === 'random' ? 'selected' : ''}>Random (by chance)</option>
               <option value="forced" ${s.formMode === 'forced' ? 'selected' : ''}>Forced (always)</option>
@@ -368,6 +511,42 @@ function buildSettingsPanel() {
             </select>
           </label>
           <small class="cfx-hint">Fragment = a surreal stretch of the narration warps into a form (only that part), gently distorted at the edges. Whole = the entire reply is formatted.</small>
+
+          <hr class="cfx-sep">
+          <div><b>Director</b> — a separate cheap model reads the scene and sets the atmosphere</div>
+          <label>Director mode
+            <select id="cfx-dir-mode" class="text_pole">
+              <option value="manual" ${s.directorMode === 'manual' ? 'selected' : ''}>Manual (sliders above)</option>
+              <option value="auto" ${s.directorMode === 'auto' ? 'selected' : ''}>Auto (director drives)</option>
+            </select>
+          </label>
+          <label>Endpoint URL (OpenAI-compatible, e.g. https://openrouter.ai/api/v1)
+            <input type="text" id="cfx-dir-endpoint" class="text_pole" value="${s.dirEndpoint}" placeholder="https://host/v1">
+          </label>
+          <label>API key
+            <input type="password" id="cfx-dir-key" class="text_pole" value="${s.dirApiKey}">
+          </label>
+          <div class="flex-container">
+            <div id="cfx-dir-fetch" class="menu_button">Fetch models</div>
+            <div id="cfx-dir-test" class="menu_button">Test request</div>
+          </div>
+          <label>Model
+            <select id="cfx-dir-model" class="text_pole">
+              ${s.dirModel ? `<option value="${s.dirModel}" selected>${s.dirModel}</option>` : '<option value="">— fetch models first —</option>'}
+            </select>
+          </label>
+          <div id="cfx-dir-status" class="cfx-hint"></div>
+          <label>Temperature: <span id="cfx-dir-temp-val">${s.dirTemperature}</span> (higher = madder verdicts)
+            <input type="range" id="cfx-dir-temp" min="0" max="2" step="0.1" value="${s.dirTemperature}">
+          </label>
+          <div class="flex-container">
+            <label>Wake every N user turns <input type="number" id="cfx-dir-freq" class="text_pole" min="1" max="20" value="${s.dirFrequency}"></label>
+            <label>Scene messages <input type="number" id="cfx-dir-ctx" class="text_pole" min="1" max="20" value="${s.dirCtxMessages}"></label>
+          </div>
+          <label class="checkbox_label"><input type="checkbox" id="cfx-dir-swipe" ${s.dirRerollOnSwipe ? 'checked' : ''}> Re-roll atmosphere on swipe/regenerate</label>
+          <label class="checkbox_label"><input type="checkbox" id="cfx-dir-debug" ${s.dirDebug ? 'checked' : ''}> Show director debug</label>
+          <div id="cfx-dir-debug-box" class="cfx-debug">no verdict yet</div>
+          <div id="cfx-calm" class="menu_button">🕊 Calm everything</div>
         </div>
       </div>
     </div>`;
@@ -421,6 +600,75 @@ function wireSettings() {
     });
     $('#cfx-forced-form').on('change', function () { s.forcedForm = this.value; save(); });
     refreshFormRows();
+
+    // Режиссёр.
+    const dirStatus = (text, isError) => {
+        $('#cfx-dir-status').text(text).css('color', isError ? '#e05555' : '');
+    };
+    const dirCfg = () => ({
+        endpoint: s.dirEndpoint, apiKey: s.dirApiKey,
+        model: s.dirModel, temperature: s.dirTemperature,
+    });
+
+    $('#cfx-dir-mode').on('change', function () { s.directorMode = this.value; save(); });
+    $('#cfx-dir-endpoint').on('input', function () { s.dirEndpoint = this.value.trim(); saveSettingsDebounced(); });
+    $('#cfx-dir-key').on('input', function () { s.dirApiKey = this.value.trim(); saveSettingsDebounced(); });
+    $('#cfx-dir-model').on('change', function () { s.dirModel = this.value; saveSettingsDebounced(); });
+    $('#cfx-dir-temp').on('input', function () {
+        s.dirTemperature = +this.value; $('#cfx-dir-temp-val').text(this.value); saveSettingsDebounced();
+    });
+    $('#cfx-dir-freq').on('input', function () { s.dirFrequency = Math.max(1, +this.value || 1); saveSettingsDebounced(); });
+    $('#cfx-dir-ctx').on('input', function () { s.dirCtxMessages = Math.max(1, +this.value || 5); saveSettingsDebounced(); });
+    $('#cfx-dir-swipe').on('change', function () { s.dirRerollOnSwipe = this.checked; saveSettingsDebounced(); });
+    $('#cfx-dir-debug').on('change', function () { s.dirDebug = this.checked; saveSettingsDebounced(); updateDirectorDebug(); });
+
+    // Проверка эндпойнта/ключа + выпадашка моделей (не ручной ввод).
+    $('#cfx-dir-fetch').on('click', async function () {
+        if (!s.dirEndpoint) { dirStatus('Endpoint URL is empty', true); return; }
+        dirStatus('Fetching models…');
+        try {
+            const models = await CFX.director.fetchModels(dirCfg());
+            if (!models.length) { dirStatus('Connected, but no models returned', true); return; }
+            const sel = document.getElementById('cfx-dir-model');
+            sel.innerHTML = models.map((m) =>
+                `<option value="${m}" ${m === s.dirModel ? 'selected' : ''}>${m}</option>`).join('');
+            if (!s.dirModel || models.indexOf(s.dirModel) === -1) {
+                s.dirModel = models[0];
+                sel.value = s.dirModel;
+            }
+            saveSettingsDebounced();
+            dirStatus('OK — ' + models.length + ' models');
+        } catch (e) {
+            dirStatus('Fetch failed: ' + e.message, true);
+        }
+    });
+
+    // Короткий тестовый запрос выбранной модели: заранее видно, что связка живая.
+    $('#cfx-dir-test').on('click', async function () {
+        if (!s.dirEndpoint || !s.dirModel) { dirStatus('Set endpoint and model first', true); return; }
+        dirStatus('Testing ' + s.dirModel + '…');
+        try {
+            const r = await CFX.director.testConnection(dirCfg());
+            dirStatus('OK in ' + r.latencyMs + 'ms — "' + r.reply.trim() + '"');
+        } catch (e) {
+            dirStatus('Test failed: ' + e.message, true);
+        }
+    });
+
+    // «Успокоить всё» — мгновенный сброс атмосферы (работает в любом режиме).
+    $('#cfx-calm').on('click', function () {
+        const st = getChatState();
+        Object.assign(st, { intensity: 0, moods: [], prevMoods: [], cooldown: 0, formCooldown: 0 });
+        directorFormThisTurn = null;
+        s.intensity = 0;
+        s.moods = [];
+        reflectStateInUI(s);
+        saveChatState();
+        save();
+        dirStatus('Calmed.');
+    });
+
+    updateDirectorDebug();
 }
 
 // Обработать все сообщения в чате (загрузка/смена чата).

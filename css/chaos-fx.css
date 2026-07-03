@@ -503,6 +503,11 @@
 }
 .chaos-fx-settings .cfx-hint { opacity: 0.6; display: block; margin-top: 4px; }
 .chaos-fx-settings .cfx-sep { border: none; border-top: 1px solid var(--SmartThemeBorderColor, #444); margin: 12px 0; opacity: 0.5; }
+.chaos-fx-settings .cfx-debug {
+  font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.5;
+  border: 1px dashed var(--SmartThemeBorderColor, #444); border-radius: 5px;
+  padding: 6px 9px; margin: 6px 0; opacity: 0.85; white-space: pre-wrap;
+}
 .cfx-readable-btn { cursor: pointer; }
 
 /* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
