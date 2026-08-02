@@ -65,6 +65,7 @@
     <div class="controls">
       <label><input type="checkbox" id="reduced" /> reduced-motion (static)</label>
       <label><input type="checkbox" id="lightbg" /> light stage background</label>
+      <label><input type="checkbox" id="readable" /> readable mode (strip all styling)</label>
       <label>budget <input type="number" id="budget" value="14" min="0" max="60" style="width:56px"></label>
       <button id="reroll" title="re-roll effects for mood tags">↻ re-render</button>
     </div>
@@ -158,6 +159,11 @@
       stage.classList.toggle('cfx-theme-light', lightbg.checked);
       stage.classList.toggle('bg-light', lightbg.checked);
     }
+
+    var readable = document.getElementById('readable');
+    readable.addEventListener('change', function () {
+      stage.classList.toggle('cfx-readable', readable.checked);
+    });
 
     input.addEventListener('input', render);
     reduced.addEventListener('change', render);

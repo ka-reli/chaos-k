@@ -11,6 +11,24 @@
  *   spatial (с maxChars)             → wave
  */
 
+/* ── Вшитые шрифты ───────────────────────────────────────────────────────── */
+/* Caveat (SIL OFL 1.1) — рукописный С ПОДДЕРЖКОЙ КИРИЛЛИЦЫ. Системные
+   рукописные шрифты кириллицу либо не покрывают, либо отсутствуют вне Windows,
+   поэтому шрифт лежит в fonts/. unicode-range → браузер качает только нужный
+   сабсет. Подробности и лицензия — fonts/README.md, fonts/OFL.txt. */
+@font-face {
+  font-family: 'CFX Caveat';
+  src: url('../fonts/caveat-cyrillic.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'CFX Caveat';
+  src: url('../fonts/caveat-latin.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2039-203A, U+2122;
+}
+
 /* ── Темы: двойная палитра через CSS-переменные ──────────────────────────── */
 /* Тёмный фон — по умолчанию. .cfx-theme-light переключает на светлую палитру. */
 .cfx-root {
@@ -306,9 +324,11 @@
   100% { transform: translate(0, 0); filter: blur(0); }
 }
 
-/* handwritten — будто написано от руки. */
+/* handwritten — будто написано от руки. Вшитый Caveat покрывает кириллицу;
+   системные варианты — на случай, если файл шрифта не отдался. */
 .cfx-root .fx-handwritten {
-  font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
+  font-family: 'CFX Caveat', 'Segoe Script', 'Comic Sans MS', cursive;
+  font-size: 1.15em;               /* Caveat мелковат относительно основного */
   transform: rotate(-1.5deg);
 }
 
@@ -554,10 +574,17 @@
   opacity: 0.78;
 }
 
-/* blackletter — готический шрифт. */
+/* blackletter — тяжёлое архаичное начертание. Настоящей готики для кириллицы
+   практически не существует, поэтому вид строится средствами CSS (плотный
+   узкий серифный текст с вертикальной растяжкой) — работает на любом алфавите.
+   Латиница дополнительно подхватит фрактуру, если она есть в системе. */
 .cfx-root .fx-blackletter {
-  font-family: 'UnifrakturMaguntia', 'Old English Text MT', 'Blackadder ITC', 'Luminari', serif;
-  letter-spacing: 0.02em;
+  font-family: 'UnifrakturMaguntia', 'Old English Text MT', Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transform: scaleY(1.18);
+  display: inline-block;
+  text-shadow: 0 0 1px currentColor;
 }
 
 /* spaced — широкая разрядка. */
@@ -682,16 +709,42 @@
 /* ── «Сделать читаемым» (per-message) ────────────────────────────────────── */
 /* Кнопка в строке сообщения вешает .cfx-readable на .mes_text — гасим всё
    оформление, оставляя чистый текст. Полностью обратимо, без ре-парсинга. */
+/* Полный сброс: важно гасить и побуквенные спаны (.cfx-ch) — иначе наклон,
+   сдвиг и угасание отдельных букв переживают «читаемый» режим и текст
+   остаётся нечитаемым. Заодно снимаем шрифты, фон, рамки и прозрачную
+   заливку градиентных эффектов (rainbow/gold/chrome). */
 .cfx-readable [data-fx],
-.cfx-readable [class*="clr-"] {
+.cfx-readable [class*="clr-"],
+.cfx-readable .cfx-ch,
+.cfx-readable .cfx-form {
   animation: none !important;
+  transition: none !important;
   transform: none !important;
   filter: none !important;
   text-shadow: none !important;
+  box-shadow: none !important;
   color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   opacity: 1 !important;
-  font-size: inherit !important;
+  font: inherit !important;          /* размер, насыщенность, семейство, курсив */
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  text-transform: none !important;
+  text-decoration: none !important;
+  writing-mode: horizontal-tb !important;
 }
+/* Побуквенные спаны возвращаем в обычный поток, чтобы строка нормально
+   переносилась; блок формы остаётся блоком, но без всякого оформления. */
+.cfx-readable [data-fx],
+.cfx-readable [class*="clr-"],
+.cfx-readable .cfx-ch { display: inline !important; }
+.cfx-readable .cfx-form { display: block !important; margin: 0.5em 0 !important; }
+.cfx-readable .cfx-form::before,
+.cfx-readable .cfx-form::after { content: none !important; display: none !important; }
 
 /* ── Панель настроек (внутри drawer'а расширений ST) ──────────────────────── */
 .chaos-fx-settings .cfx-moods {
