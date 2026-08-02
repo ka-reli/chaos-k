@@ -18,11 +18,17 @@ function check(name, cond, extra) {
 // ── Промпт ──────────────────────────────────────────────────────────────────
 var msgs = D.buildDirectorMessages(
   [{ name: 'Renri', text: 'Комната плыла.' }, { name: 'Эманон', text: 'Я закурила.' }],
-  { intensity: 4, moods: ['ominous'] }
+  { intensity: 4, moods: ['ominous'] },
+  true
 );
 check('промпт: system + user', msgs.length === 2 && msgs[0].role === 'system', msgs.length);
 check('промпт: словарь настроений', /psychedelic — психоделия/.test(msgs[0].content), null);
-check('промпт: словарь форм', /stream — поток сознания/.test(msgs[0].content), null);
+check('промпт: словарь форм при withForms', /stream — поток сознания/.test(msgs[0].content), null);
+
+// Формы выключены → словарь форм не отправляем вовсе (экономия и фокус).
+var msgsNoForms = D.buildDirectorMessages([{ name: 'A', text: 'б' }], { intensity: 3, moods: [] }, false);
+check('промпт: без форм словарь опущен',
+  !/stream — поток сознания/.test(msgsNoForms[0].content) && /"form": null/.test(msgsNoForms[0].content), null);
 check('промпт: только JSON', /ТОЛЬКО JSON/.test(msgs[0].content), null);
 check('промпт: текущее состояние', /накал 4/.test(msgs[1].content) && /ominous/.test(msgs[1].content), msgs[1].content.slice(0, 80));
 check('промпт: сцена с именами', /Renri: Комната плыла\./.test(msgs[1].content), null);

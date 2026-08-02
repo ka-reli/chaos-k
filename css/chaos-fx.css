@@ -386,6 +386,211 @@
   50%      { transform: rotate(1deg) skewX(3deg); }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Побуквенная механика: парсер оборачивает каждый символ в .cfx-ch с
+   индексом --i. Отсюда — эффекты, работающие вдоль фразы (волна, лесенка,
+   угасание, нарастание) и настоящий разброс/перемешивание букв.
+   ───────────────────────────────────────────────────────────────────────── */
+.cfx-root .cfx-ch { display: inline-block; white-space: pre; }
+
+/* wave — волна бежит по фразе, буква за буквой. */
+.cfx-root .fx-wave .cfx-ch {
+  animation: cfx-wave-ch 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.055s);
+}
+@keyframes cfx-wave-ch {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* scramble — буквы дёргаются и встают на место. */
+.cfx-root .fx-scramble .cfx-ch {
+  animation: cfx-scramble-ch 0.45s steps(3, end) infinite;
+  animation-delay: calc(var(--i) * -0.11s);
+}
+@keyframes cfx-scramble-ch {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  33%  { transform: translate(1px, -2px) rotate(6deg); }
+  66%  { transform: translate(-2px, 1px) rotate(-5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+/* scatter — буквы разлетелись и мелко плавают. */
+.cfx-root .fx-scatter { letter-spacing: 0.12em; }
+.cfx-root .fx-scatter .cfx-ch { animation: cfx-scatter-ch 4s ease-in-out infinite; animation-delay: calc(var(--i) * -0.23s); }
+.cfx-root .fx-scatter .cfx-ch:nth-child(3n)   { transform: translateY(-7px) rotate(-11deg); }
+.cfx-root .fx-scatter .cfx-ch:nth-child(3n+1) { transform: translateY(5px) rotate(8deg); }
+.cfx-root .fx-scatter .cfx-ch:nth-child(4n+2) { transform: translateY(-3px) rotate(15deg); }
+.cfx-root .fx-scatter .cfx-ch:nth-child(5n+3) { transform: translateY(8px) rotate(-6deg); }
+@keyframes cfx-scatter-ch {
+  0%, 100% { margin-left: 0; margin-right: 0; }
+  50%      { margin-left: 1px; margin-right: 1px; }
+}
+
+/* stairs — фраза сползает лесенкой. */
+.cfx-root .fx-stairs .cfx-ch { transform: translateY(calc(var(--i) * 1.6px)); }
+
+/* vanish — фраза угасает к концу. */
+.cfx-root .fx-vanish .cfx-ch {
+  opacity: calc(1 - var(--i) * 0.022);
+  filter: blur(calc(var(--i) * 0.018px));
+}
+
+/* swell — фраза нарастает к концу. */
+.cfx-root .fx-swell .cfx-ch {
+  font-size: calc(1em + var(--i) * 0.014em);
+  font-weight: calc(400 + var(--i) * 12);
+}
+
+/* topple — фраза заваливается набок. */
+.cfx-root .fx-topple .cfx-ch {
+  transform: rotate(calc(var(--i) * 1.4deg)) translateY(calc(var(--i) * 0.6px));
+  transform-origin: bottom center;
+}
+
+/* crawl — буквы шевелятся вразнобой. */
+.cfx-root .fx-crawl .cfx-ch {
+  animation: cfx-crawl-ch 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.17s);
+}
+@keyframes cfx-crawl-ch {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(0.5px, -1.5px); }
+  50%      { transform: translate(-1px, 0.5px); }
+  75%      { transform: translate(1px, 1px); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Новые обычные эффекты
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* strobe — резкое мигание. */
+.cfx-root .fx-strobe { animation: cfx-strobe 0.35s steps(1) infinite; }
+@keyframes cfx-strobe {
+  0%, 45%  { opacity: 1; }
+  50%, 95% { opacity: 0.12; }
+}
+
+/* hologram — голографическая проекция с полосами. */
+.cfx-root .fx-hologram {
+  color: #9fe8ff;
+  text-shadow: 0 0 6px #4fd0ff, 0 0 14px #2196f3;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,0.11) 0 1px, transparent 1px 3px);
+  -webkit-background-clip: text; background-clip: text;
+  animation: cfx-hologram 3s linear infinite;
+}
+@keyframes cfx-hologram {
+  0%, 100% { opacity: 0.85; background-position: 0 0; }
+  50%      { opacity: 1; background-position: 0 6px; }
+}
+.cfx-root .fx-hologram-static { color: #9fe8ff; text-shadow: 0 0 6px #4fd0ff, 0 0 12px #2196f3; opacity: 0.9; }
+
+/* vhs — помехи старой плёнки. */
+.cfx-root .fx-vhs {
+  text-shadow: 1.5px 0 rgba(255,0,80,0.65), -1.5px 0 rgba(0,220,255,0.65);
+  animation: cfx-vhs 2.4s steps(12, end) infinite;
+}
+@keyframes cfx-vhs {
+  0%, 92%, 100% { transform: translateX(0) skewX(0deg); filter: none; }
+  94%  { transform: translateX(3px) skewX(-6deg); filter: brightness(1.4); }
+  96%  { transform: translateX(-2px) skewX(4deg); }
+}
+.cfx-root .fx-vhs-static { text-shadow: 1.5px 0 rgba(255,0,80,0.6), -1.5px 0 rgba(0,220,255,0.6); }
+
+/* pixelate — распад на пиксели (приближение: ступенчатый блюр + контраст). */
+.cfx-root .fx-pixelate { animation: cfx-pixelate 3.2s steps(4, end) infinite; }
+@keyframes cfx-pixelate {
+  0%, 100% { filter: blur(0) contrast(1); letter-spacing: 0; }
+  50%      { filter: blur(1.4px) contrast(2.4); letter-spacing: 0.06em; }
+}
+.cfx-root .fx-pixelate-static { filter: blur(1px) contrast(2); letter-spacing: 0.04em; }
+
+/* bloom — пересвеченное сияние. */
+.cfx-root .fx-bloom {
+  color: var(--cfx-clr, currentColor);
+  animation: cfx-bloom 3.4s ease-in-out infinite;
+}
+@keyframes cfx-bloom {
+  0%, 100% { filter: brightness(1.1) drop-shadow(0 0 3px currentColor); }
+  50%      { filter: brightness(1.7) drop-shadow(0 0 12px currentColor) drop-shadow(0 0 22px currentColor); }
+}
+.cfx-root .fx-bloom-static { color: var(--cfx-clr, currentColor); filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
+
+/* stretch — тянется и сжимается. */
+.cfx-root .fx-stretch { animation: cfx-stretch 3s ease-in-out infinite; transform-origin: center; }
+@keyframes cfx-stretch {
+  0%, 100% { transform: scale(1, 1); }
+  35%      { transform: scale(1.22, 0.86); }
+  70%      { transform: scale(0.84, 1.18); }
+}
+
+/* breathe — медленное дыхание. */
+.cfx-root .fx-breathe { animation: cfx-breathe 4.5s ease-in-out infinite; }
+@keyframes cfx-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.88; }
+  50%      { transform: scale(1.045); opacity: 1; }
+}
+
+/* dissolve — растворяется в воздухе. */
+.cfx-root .fx-dissolve { animation: cfx-dissolve 4s ease-in-out infinite; }
+@keyframes cfx-dissolve {
+  0%, 100% { opacity: 0.75; filter: blur(0.2px); letter-spacing: 0; }
+  50%      { opacity: 0.28; filter: blur(1.6px); letter-spacing: 0.05em; }
+}
+.cfx-root .fx-dissolve-static { opacity: 0.5; filter: blur(0.9px); }
+
+/* highlight — выделено маркером. */
+.cfx-root .fx-highlight {
+  background: linear-gradient(transparent 55%, rgba(255, 235, 59, 0.55) 55%);
+  padding: 0 2px; border-radius: 2px;
+}
+.cfx-root.cfx-theme-light .fx-highlight { background: linear-gradient(transparent 55%, rgba(255, 213, 0, 0.7) 55%); }
+
+/* stamp — оттиск печати наискось. */
+.cfx-root .fx-stamp {
+  border: 2px solid currentColor; border-radius: 3px;
+  padding: 0 5px; transform: rotate(-6deg);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  opacity: 0.78;
+}
+
+/* blackletter — готический шрифт. */
+.cfx-root .fx-blackletter {
+  font-family: 'UnifrakturMaguntia', 'Old English Text MT', 'Blackadder ITC', 'Luminari', serif;
+  letter-spacing: 0.02em;
+}
+
+/* spaced — широкая разрядка. */
+.cfx-root .fx-spaced { letter-spacing: 0.42em; word-spacing: 0.2em; }
+
+/* chrome — холодный металлический блеск. */
+.cfx-root .fx-chrome {
+  background: linear-gradient(180deg, #f6f9ff 0%, #98a5b8 45%, #e9edf5 50%, #6f7d92 55%, #dfe6f2 100%);
+  background-size: 100% 200%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cfx-chrome 4s ease-in-out infinite;
+}
+@keyframes cfx-chrome { 0%, 100% { background-position: 0 0; } 50% { background-position: 0 100%; } }
+.cfx-root .fx-chrome-static {
+  background: linear-gradient(180deg, #f6f9ff 0%, #98a5b8 45%, #e9edf5 50%, #6f7d92 55%, #dfe6f2 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+/* градиентные заливки — без контрастной обводки (иначе грязный ореол) */
+.cfx-root .fx-chrome, .cfx-root .fx-chrome-static { text-shadow: none; }
+
+/* bleed — краска растекается. */
+.cfx-root .fx-bleed {
+  color: var(--cfx-clr, currentColor);
+  animation: cfx-bleed 3.6s ease-in-out infinite;
+}
+@keyframes cfx-bleed {
+  0%, 100% { text-shadow: 0 1px 2px currentColor; filter: blur(0.1px); }
+  50%      { text-shadow: 0 3px 7px currentColor, 0 6px 12px currentColor; filter: blur(0.5px); }
+}
+.cfx-root .fx-bleed-static { color: var(--cfx-clr, currentColor); text-shadow: 0 2px 5px currentColor; }
+
 /* ── Форма-фрагмент: отрезок повествования, сорвавшийся в сюр-форму ────────── */
 /* [form:имя]…[/form] → блок с выбираемым стилем краёв (cfx-edge-*). База —
    подложка + нейтральный маркер; край задаёт отдельный класс. */
@@ -508,6 +713,15 @@
   border: 1px dashed var(--SmartThemeBorderColor, #444); border-radius: 5px;
   padding: 6px 9px; margin: 6px 0; opacity: 0.85; white-space: pre-wrap;
 }
+.chaos-fx-settings .cfx-experimental > summary { cursor: pointer; opacity: 0.75; margin: 4px 0; }
+.chaos-fx-settings .cfx-madness-label { font-weight: 700; letter-spacing: 0.03em; }
+.chaos-fx-settings.cfx-mad .cfx-madness-label {
+  background: linear-gradient(90deg, #ff5cc8, #ffc24d, #9dff3c, #5bb8ff, #ff5cc8);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cfx-rainbow 3s linear infinite;
+}
 .cfx-readable-btn { cursor: pointer; }
 
 /* ── Доступность: системный prefers-reduced-motion ───────────────────────── */
@@ -516,6 +730,7 @@
    Каждый эффект спроектирован так, что в покое текст остаётся читаемым. */
 @media (prefers-reduced-motion: reduce) {
   .cfx-root [data-fx],
+  .cfx-root .cfx-ch,
   .cfx-root .cfx-form,
   .cfx-root .cfx-form::before,
   .cfx-root .cfx-form::after { animation: none !important; }

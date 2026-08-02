@@ -50,30 +50,36 @@
   });
 
   // ── Сборка промпта ──────────────────────────────────────────────────────────
-  function buildDirectorMessages(sceneMessages, state) {
+  // withForms=false — словарь форм не отправляем вовсе (формы выключены):
+  // экономия токенов и меньше шансов, что режиссёр отвлечётся на них.
+  function buildDirectorMessages(sceneMessages, state, withForms) {
     var moodDict = ChaosFX.MOODS.map(function (m) {
       return m + ' — ' + (MOOD_RU[m] || m);
-    }).join('; ');
-    var formDict = ChaosFX.FORMS.map(function (f) {
-      return f.id + ' — ' + f.desc;
     }).join('; ');
 
     var sys = [
       'Ты — «режиссёр атмосферы» текстовой ролевой игры. Прочитай последние сообщения сцены и верни настройки визуальной атмосферы.',
       '',
       'Ответь ТОЛЬКО JSON-объектом, без markdown, без пояснений, без текста вокруг:',
-      '{"intensity": 0-10, "moods": ["1-3 из словаря"], "form": "id формы или null", "image": null, "note": "короткое пояснение"}',
+      '{"intensity": 0-10, "moods": ["1-3 из словаря"], "form": ' + (withForms ? '"id формы или null"' : 'null') + ', "image": null, "note": "короткое пояснение"}',
       '',
       'Правила:',
       '- intensity — накал сцены: 0-2 покой, 3-5 обычное напряжение, 6-8 сильные эмоции, 9-10 экстрим.',
       '- moods — 1-3 настроения СТРОГО из словаря. Не выдумывай новых.',
-      '- form — id формы ТОЛЬКО если сцена явно уходит в психодел, бред, сон или искажение реальности; иначе null. Это редкий приём.',
+      withForms
+        ? '- form — id формы ТОЛЬКО если сцена явно уходит в психодел, бред, сон или искажение реальности; иначе null. Это редкий приём.'
+        : '- form — всегда null.',
       '- image — всегда null (зарезервировано).',
       '- note — одна короткая фраза, почему так.',
       '',
-      'Словарь настроений: ' + moodDict + '.',
-      'Формы (id — что это): ' + formDict + '.'
-    ].join('\n');
+      'Словарь настроений: ' + moodDict + '.'
+    ];
+    if (withForms) {
+      sys.push('Формы (id — что это): ' + ChaosFX.FORMS.map(function (f) {
+        return f.id + ' — ' + f.desc;
+      }).join('; ') + '.');
+    }
+    sys = sys.join('\n');
 
     var cur = state && state.intensity != null
       ? 'Текущая атмосфера: накал ' + state.intensity +
@@ -280,8 +286,8 @@
   }
 
   // Полный цикл: сцена → вызов → разбор. Сетевые/парс-ошибки не бросаем наружу.
-  async function directScene(cfg, sceneMessages, state, smoothOpts) {
-    var messages = buildDirectorMessages(sceneMessages, state);
+  async function directScene(cfg, sceneMessages, state, smoothOpts, withForms) {
+    var messages = buildDirectorMessages(sceneMessages, state, withForms);
     var raw;
     try {
       raw = await complete(cfg, messages, 250);
