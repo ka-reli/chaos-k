@@ -97,5 +97,22 @@ check('неизвестная форма выкушена', r18.indexOf('form:')
 var r19 = CFX.parse('[form:letters]привет [fx:glow][rose]милый[/rose][/fx][/form]', { escape: false });
 check('метки внутри формы', /cfx-form/.test(r19) && /fx-glow/.test(r19) && /clr-rose/.test(r19), r19);
 
+// 20. perLetter: каждый символ в своём спане с индексом, пробелы не дробятся.
+var r20 = CFX.parse('[fx:wave]аб в[/fx]', { escape: false });
+check('perLetter: спаны с --i', /<span class="cfx-ch" style="--i:0">а<\/span>/.test(r20) && /--i:2">в/.test(r20), r20);
+check('perLetter: пробел не обёрнут', / <\/span>/.test(r20) === false && r20.indexOf('</span> <span') !== -1, r20);
+
+// 21. perLetter не ломает вложенный HTML (теги копируются целиком).
+var r21 = CFX.parse('[fx:wave]<em>ab</em>[/fx]', { escape: false });
+check('perLetter: html-теги целы', /<em><span class="cfx-ch"/.test(r21) && /<\/span><\/em>/.test(r21), r21);
+
+// 22. perLetter не ломает HTML-сущности (считаются одним символом).
+var r22 = CFX.parse('[fx:wave]a&amp;b[/fx]', { escape: false });
+check('perLetter: сущность целая', /<span class="cfx-ch" style="--i:1">&amp;<\/span>/.test(r22), r22);
+
+// 23. Обычные эффекты по-прежнему без дробления.
+var r23 = CFX.parse('[fx:glow]аб[/fx]', { escape: false });
+check('не-perLetter: без cfx-ch', r23.indexOf('cfx-ch') === -1, r23);
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

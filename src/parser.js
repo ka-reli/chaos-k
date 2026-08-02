@@ -167,6 +167,34 @@
     return false;
   }
 
+  // Обернуть каждый видимый символ в спан с индексом (--i) — для эффектов
+  // с perLetter (волна, лесенка, угасание…). HTML-безопасно: теги копируются
+  // целиком, сущности считаются одним символом, пробелы не оборачиваются.
+  function wrapChars(html) {
+    var out = '', i = 0, n = 0;
+    while (i < html.length) {
+      var c = html.charAt(i);
+      if (c === '<') {                       // тег — копируем как есть
+        var gt = html.indexOf('>', i);
+        if (gt === -1) { out += html.slice(i); break; }
+        out += html.slice(i, gt + 1); i = gt + 1; continue;
+      }
+      if (c === '&') {                       // HTML-сущность — один символ
+        var sc = html.indexOf(';', i);
+        if (sc !== -1 && sc - i <= 10) {
+          out += '<span class="cfx-ch" style="--i:' + (n++) + '">' + html.slice(i, sc + 1) + '</span>';
+          i = sc + 1; continue;
+        }
+      }
+      if (c === ' ' || c === '\n' || c === '\t' || c === '\r') { out += c; i++; continue; }
+      var code = html.charCodeAt(i);
+      var len = (code >= 0xd800 && code <= 0xdbff) ? 2 : 1; // суррогатная пара
+      out += '<span class="cfx-ch" style="--i:' + (n++) + '">' + html.substr(i, len) + '</span>';
+      i += len;
+    }
+    return out;
+  }
+
   // ── Рендер дерева в HTML ──────────────────────────────────────────────────
   function textLength(node) {
     if (node.kind === 'text') return node.value.length;
@@ -250,6 +278,10 @@
     ctx.depth++;
     var body = renderChildren(node, ctx);
     ctx.depth--;
+
+    // Побуквенные эффекты: каждый символ получает свой спан с индексом.
+    // При reduced-motion со статической заменой дробить незачем.
+    if (fx.perLetter && cls === fx.css) body = wrapChars(body);
 
     var classes = cls;
     if (fx.colorBased) classes += ' fx-colored';

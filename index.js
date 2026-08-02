@@ -34,7 +34,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 const CFX = window.ChaosFX;
 const MODULE = 'chaos_fx';
 const PROMPT_KEY = 'chaos_fx_palette';
-const VERSION = '0.7.0'; // бамп при изменениях — для проверки, что кэш свежий
+const VERSION = '0.8.0'; // бамп при изменениях — для проверки, что кэш свежий
 
 // ── Настройки ───────────────────────────────────────────────────────────────
 const defaultSettings = {
@@ -48,6 +48,8 @@ const defaultSettings = {
     reducedMotion: false, // ручной reduced-motion
     theme: 'auto',        // auto | dark | light
     stripFromContext: false, // вырезать метки из истории перед отправкой
+    madness: false,          // РЕЖИМ БЕЗУМИЯ: всё выкручено на максимум
+    applyDuringStreaming: false, // применять эффекты во время стрима (мигает!)
     // Макро-формы (рецепт/пьеса/досье и т.д.)
     formScope: 'fragment', // whole (весь ответ) | fragment (акцентный кусок)
     formMode: 'off',       // off | auto (модель решает) | random | forced
@@ -121,14 +123,34 @@ function injectRippleFilter() {
     document.body.insertAdjacentHTML('beforeend', svg);
 }
 
+// ── Режим безумия ────────────────────────────────────────────────────────────
+// Всё выкручено на максимум: потолок 10, психоделические пулы, огромный бюджет,
+// щедрая палитра и отдельная директива модели. Перекрывает режиссёра.
+const MADNESS = {
+    intensity: 10,
+    moods: ['psychedelic', 'chaos', 'dream'],
+    budget: 60,
+    effectsCount: 12,
+    colorsCount: 8,
+};
+
+// Эффективные настройки рендера/промпта с учётом безумия.
+function effective(s) {
+    if (!s.madness) return s;
+    return Object.assign({}, s, MADNESS);
+}
+
 // ── Рендер: развернуть метки в DOM сообщения ─────────────────────────────────
 // Флаг: мы сами сейчас пишем в DOM — наблюдатель должен игнорировать эти мутации.
 let cfxApplying = false;
+// Идёт стриминг ответа: DOM не трогаем, иначе ST перерисовывает сообщение из
+// сырого текста и метки мигают туда-сюда (спека, п. 8 — «эффекты после стрима»).
+let cfxStreaming = false;
 
 // Развернуть метки в одном .mes_text. Идемпотентно: если меток нет или они уже
 // развёрнуты, DOM не трогаем (можно звать сколько угодно раз).
 function expandTags(textEl) {
-    const s = settings();
+    const s = effective(settings());
     if (!s.enabled || !s.effects || !textEl) return;
     const src = textEl.innerHTML;
     if (src.indexOf('[') === -1) return; // быстрый выход: меток точно нет
@@ -199,11 +221,15 @@ let cfxFlushTimer = null;
 
 function scheduleFlush() {
     clearTimeout(cfxFlushTimer);
+    // Во время стрима ждём дольше и разворачиваем метки только когда поток
+    // затих: так вместо мигания раз в пару секунд будет один чистый проход.
+    // (Сторожевой таймер на случай, если событие конца генерации не придёт.)
+    const streaming = cfxStreaming && !settings().applyDuringStreaming;
     cfxFlushTimer = setTimeout(() => {
         const blocks = [...cfxPending];
         cfxPending.clear();
         blocks.forEach(processBlock);
-    }, 180);
+    }, streaming ? 2500 : 180);
 }
 
 function startObserver() {
@@ -284,6 +310,7 @@ async function maybeRunDirector(chat, type) {
             collectScene(chat, s),
             { intensity: st.intensity, moods: st.moods || [], prevMoods: st.prevMoods || [], cooldown: st.cooldown || 0, formCooldown: st.formCooldown || 0 },
             { maxStep: s.dirMaxStep, formCooldownTurns: s.dirFormCooldown },
+            s.formMode === 'director', // словарь форм шлём только если он нужен
         );
         st.lastUserCount = userCount;
         if (res.ok) {
@@ -344,7 +371,7 @@ function updateDirectorDebug() {
 // ── Подсказка модели: ротация палитры перед генерацией ───────────────────────
 // Эффекты и формы независимы: блок инжектится, если включён хотя бы один слой.
 function injectPalette() {
-    const s = settings();
+    const s = effective(settings());
     if (!s.enabled) {
         setExtensionPrompt(PROMPT_KEY, '', extension_prompt_types.IN_CHAT, 1);
         return;
@@ -366,6 +393,7 @@ function injectPalette() {
         effectsCount: wantEffects ? s.effectsCount : 0,
         colorsCount: wantEffects ? s.colorsCount : 0,
         form: null, // директиву формы строим отдельно (scope-aware)
+        madness: s.madness,
     });
     let prompt = res.prompt;
     if (directive) prompt = prompt ? directive + '\n\n' + prompt : directive;
@@ -454,6 +482,10 @@ function buildSettingsPanel() {
           <label class="checkbox_label"><input type="checkbox" id="cfx-effects" ${s.effects ? 'checked' : ''}> Micro-effects layer</label>
           <label class="checkbox_label"><input type="checkbox" id="cfx-reduced" ${s.reducedMotion ? 'checked' : ''}> Reduced motion (static)</label>
           <label class="checkbox_label"><input type="checkbox" id="cfx-strip" ${s.stripFromContext ? 'checked' : ''}> Strip tags from context history</label>
+          <label class="checkbox_label"><input type="checkbox" id="cfx-stream" ${s.applyDuringStreaming ? 'checked' : ''}> Apply effects while streaming (causes flicker)</label>
+
+          <label class="checkbox_label cfx-madness-label"><input type="checkbox" id="cfx-madness" ${s.madness ? 'checked' : ''}> 🌀 MADNESS MODE — everything maxed out</label>
+          <small class="cfx-hint">Ceiling 10, psychedelic pools, huge budget, dense markup. Overrides the director and the sliders below.</small>
 
           <label>Theme
             <select id="cfx-theme" class="text_pole">
@@ -479,7 +511,8 @@ function buildSettingsPanel() {
           <small class="cfx-hint">Empty = all moods. In Director auto mode these show the director's verdict; manual tweaks act as overrides until its next wake.</small>
 
           <hr class="cfx-sep">
-          <div><b>Macro-forms</b> — recipe / play / dossier… as a form</div>
+          <details class="cfx-experimental">
+          <summary><b>Macro-forms</b> — experimental, off by default</summary>
           <label>Form scope
             <select id="cfx-form-scope" class="text_pole">
               <option value="fragment" ${s.formScope === 'fragment' ? 'selected' : ''}>Accent fragment (part of reply)</option>
@@ -511,6 +544,7 @@ function buildSettingsPanel() {
             </select>
           </label>
           <small class="cfx-hint">Fragment = a surreal stretch of the narration warps into a form (only that part), gently distorted at the edges. Whole = the entire reply is formatted.</small>
+          </details>
 
           <hr class="cfx-sep">
           <div><b>Director</b> — a separate cheap model reads the scene and sets the atmosphere</div>
@@ -565,6 +599,12 @@ function wireSettings() {
     $('#cfx-effects').on('change', function () { s.effects = this.checked; save(); });
     $('#cfx-reduced').on('change', function () { s.reducedMotion = this.checked; save(); });
     $('#cfx-strip').on('change', function () { s.stripFromContext = this.checked; save(); });
+    $('#cfx-stream').on('change', function () { s.applyDuringStreaming = this.checked; saveSettingsDebounced(); });
+    $('#cfx-madness').on('change', function () {
+        s.madness = this.checked;
+        $('.chaos-fx-settings').toggleClass('cfx-mad', s.madness);
+        save();
+    });
     $('#cfx-theme').on('change', function () { s.theme = this.value; applyTheme(); save(); });
     $('#cfx-intensity').on('input', function () {
         s.intensity = +this.value; $('#cfx-intensity-val').text(this.value); save();
@@ -694,14 +734,26 @@ jQuery(() => {
         .forEach((ev) => { if (ev) eventSource.on(ev, renderMessage); });
 
     // Запасная инъекция палитры (на случай, если generate_interceptor
-    // не вызывается в этой версии ST).
+    // не вызывается в этой версии ST) + отметка начала стрима.
     if (event_types.GENERATION_STARTED) {
         eventSource.on(event_types.GENERATION_STARTED, (type, _opts, dryRun) => {
             if (dryRun) return;
             if (type === 'quiet') return;
+            cfxStreaming = true;
             injectPalette();
         });
     }
+
+    // Конец генерации — снимаем флаг и делаем один чистый проход по меткам.
+    [event_types.GENERATION_ENDED, event_types.GENERATION_STOPPED, event_types.MESSAGE_RECEIVED]
+        .forEach((ev) => {
+            if (!ev) return;
+            eventSource.on(ev, () => {
+                cfxStreaming = false;
+                clearTimeout(cfxFlushTimer);
+                setTimeout(processAll, 60);
+            });
+        });
 
     // Метки в старых сообщениях при загрузке/смене чата.
     eventSource.on(event_types.CHAT_CHANGED, () => setTimeout(processAll, 100));
